@@ -44,10 +44,10 @@ router.post("/register", async(req, res) => {
 })
 
 router.post("/login", async(req, res) => {
-    const { username, email, password } = req.body
+    const { login, password } = req.body
 
     try {
-        const response = await userControl.userLogin({ username, email, password })
+        const response = await userControl.userLogin({ login, password })
 
         const { status } = response
 

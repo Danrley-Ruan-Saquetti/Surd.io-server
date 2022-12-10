@@ -12,8 +12,7 @@ const UserSchema = mongoose.Schema({
     },
     password: {
         type: String,
-        require: true,
-        select: false
+        require: true
     },
     online: {
         type: Boolean,
@@ -66,15 +65,15 @@ const UserSchema = mongoose.Schema({
     },
     passwordResetToken: {
         type: String,
-        select: false,
+        default: null
     },
     passwordResetExpires: {
         type: Date,
-        select: false,
+        default: null
     },
     authToken: {
         type: String,
-        select: false,
+        default: null
     },
     createAt: {
         type: Date,

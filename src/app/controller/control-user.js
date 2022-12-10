@@ -87,18 +87,23 @@ export default function UserControl() {
         return { error, valueOf: error.length == 0 }
     }
 
-    const validAuthentication = async({ username, email, password }) => {
-        const responseEmail = await findByEmail({ email }, "+authToken password")
+    const validAuthentication = async({ login, password }) => {
+        const responseEmail = await findByEmail({ email: login })
 
-        if (responseEmail.error) { return { error: { msg: "User not found", system: true }, valueOf: false } }
+        let user = null
 
-        const { user } = responseEmail
+        console.log({ responseEmail });
+        if (responseEmail.user) {
+            user = responseEmail.user
+        } else {
+            const responseUsername = await findByUsername({ username: login })
+
+            if (responseUsername.user) { user = responseUsername.user }
+
+            console.log({ responseUsername });
+        }
 
         if (!user) { return { error: { msg: "User not found", system: true }, valueOf: false } }
-
-        console.log(user);
-
-        if (user.username != username) { return { error: { msg: "Username incorrect", username: true }, valueOf: false } }
 
         if (!await bcryptjs.compare(password, user.password)) { return { error: { msg: "Password incorrect", password: true }, valueOf: false } }
 
@@ -127,41 +132,52 @@ export default function UserControl() {
         await user.save()
 
         user.password = undefined
+        user.passwordResetToken = undefined
+        user.passwordResetExpires = undefined
 
         return { user, status: 200 }
     }
 
-    const userLogin = async({ username = "", email = "", password = "" }) => {
-        const valuesVerified = verifyValues({ username, email, password })
+    const userLogin = async({ login = "", password = "" }) => {
+        if (!login) {
+            return { error: { msg: "Inform the e-mail or username", login: true }, status: 400 }
+        } else {
+            if (login.split(" ").length > 1) {
+                return { error: { msg: "Login incorrect", login: true }, status: 400 }
+            }
+        }
+        if (!password) {
+            return { error: { msg: "Inform the password", password: true }, status: 400 }
+        }
 
-        if (!valuesVerified.valueOf) { return { error: valuesVerified.error, status: 400 } }
-
-        const validAuth = await validAuthentication({ email, username, password })
+        const validAuth = await validAuthentication({ login, password })
 
         if (!validAuth.valueOf) { return { error: validAuth.error, status: 401 } }
 
         const { user } = validAuth
 
-
         if (user.online) { return { error: { msg: "User already logged in this moment", system: true }, status: 401 } }
 
+        const token = generatedToken({ id: user })
+
+        user.authToken = token
         user.online = true
 
         await user.save()
 
         user.password = undefined
+        user.passwordResetToken = undefined
+        user.passwordResetExpires = undefined
 
-        return { user, token: generatedToken({ id: user }), status: 200 }
+        return { user, status: 200 }
     }
 
     const userLogout = async({ _id, token }) => {
-        const response = await findById({ _id }, "authToken")
+        const response = await findById({ _id })
 
         if (response.error) { return { error: { msg: "User not found", system: true }, status: 400 } }
 
         const { user } = response
-
-        console.log(response);
 
         if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
 
@@ -173,7 +189,7 @@ export default function UserControl() {
     }
 
     const userForgotPassword = async({ email }) => {
-        const response = await findByEmail({ email }, "passwordResetToken passwordResetExpires")
+        const response = await findByEmail({ email })
 
         if (response.error) { return { error: { msg: "User not found", email: true }, status: 400 } }
 
@@ -206,7 +222,7 @@ export default function UserControl() {
     }
 
     const userResetPassword = async({ email, password, token }) => {
-        const response = await findByEmail({ email }, "+password passwordResetToken passwordResetExpires")
+        const response = await findByEmail({ email })
 
         if (response.error) { return { error: { msg: "User not found", email: true }, status: 400 } }
 
