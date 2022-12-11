@@ -82,6 +82,7 @@ export default function UserControl() {
         return { user, error: [], valueOf: true }
     }
 
+    // Use Cases
     const userRegister = async({ username = "", email = "", password = "" }) => {
         const valuesVerified = verifyValues({ username, email, password })
 
@@ -203,7 +204,11 @@ export default function UserControl() {
         return { success: { msg: "User reset password successfully", system: true }, status: 200 }
     }
 
-    const selectUser = async({ _id }) => {
+    const selectUser = async({ _id, token }) => {
+        const tokenValid = validToken(token)
+
+        if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
+
         const response = await findById({ _id })
 
         if (!response.user) { return { error: { msg: "User not found", system: true }, status: 401 } }
@@ -213,81 +218,9 @@ export default function UserControl() {
         user.password = undefined
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
+        user.authToken = undefined
 
         return { user, status: 200 }
-    }
-
-    const sendInviteFriendship = async({ users, token }) => {
-        // const tokenValid = validToken(token)
-
-        // if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
-
-        const responseFriendship = await findFriendly({ users })
-
-        if (responseFriendship.friend) { return { error: { msg: "User already is a friend", system: true }, status: 401 } }
-
-        const response = await registerFriend({ users })
-
-        if (response.error) { return { error: { msg: "Cannot send invite friend", system: true }, status: 400 } }
-
-        const { friend } = response
-
-        for (let i = 0; i < friend.users.length; i++) {
-            const user = friend.users[i]
-
-            user.password = undefined
-            user.passwordResetToken = undefined
-            user.passwordResetExpires = undefined
-            user.authToken = undefined
-        }
-
-        return { friend: friend.users, success: { msg: "Send invite friendship successfully", system: true }, status: 200 }
-    }
-
-    const acceptFriendship = async({ _id }) => {
-        const response = await findFriendlyById({ _id })
-
-        if (response.error) { return { error: { msg: "Friendship not found", system: true }, status: 401 } }
-
-        const { friend } = response
-
-        if (!friend.pending) { return { error: { msg: `Friendship already ${friend.accepted ? "accepted" : "denied"}`, system: true }, status: 401 } }
-
-        friend.pending = false
-        friend.accepted = true
-
-        friend.save()
-
-        return { success: { msg: "Accept friendship successfully", system: true }, status: 200 }
-    }
-
-    const removeFriendship = async({ _id }) => {
-        const response = await findFriendlyById({ _id })
-
-        if (response.error) { return { error: { msg: "Friendship not found", system: true }, status: 401 } }
-
-        const { friend } = response
-
-        friend.remove()
-
-        return { success: { msg: "Friendship removed successfully", system: true }, status: 200 }
-    }
-
-    const deniedFriendship = async({ _id }) => {
-        const response = await findFriendlyById({ _id })
-
-        if (response.error) { return { error: { msg: "Friendship not found", system: true }, status: 401 } }
-
-        const { friend } = response
-
-        if (!friend.pending) { return { error: { msg: `Friendship already ${friend.accepted ? "accepted" : "denied"}`, system: true }, status: 401 } }
-
-        friend.pending = false
-        friend.accepted = false
-
-        friend.save()
-
-        return { success: { msg: "Denied friendship successfully", system: true }, status: 200 }
     }
 
     const listUsers = async({ token }) => {
@@ -305,96 +238,10 @@ export default function UserControl() {
             user.password = undefined
             user.passwordResetToken = undefined
             user.passwordResetExpires = undefined
+            user.authToken = undefined
         });
 
         return { users, status: 200 }
-    }
-
-    const listFriends = async({ _id, token }) => {
-        const tokenValid = validToken(token)
-
-        if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
-
-        const response = await findFriendsByUser({ _id })
-
-        if (response.error) { return { error: { msg: "Cannot get friends", system: true }, status: 401 } }
-
-        const { friends } = response
-
-        const users = []
-
-        for (let i = 0; i < friends.length; i++) {
-            const f = friends[i];
-
-            const { user } = f.users[0] != _id ? await findById(f.users[0]) : await findById(f.users[1])
-
-            user.password = undefined
-            user.passwordResetToken = undefined
-            user.passwordResetExpires = undefined
-            user.authToken = undefined
-
-            users.push({ _id: f._id, user })
-        }
-
-        return { friends: users, status: 200 }
-    }
-
-    const listFriendsPending = async({ _id, token }) => {
-        const tokenValid = validToken(token)
-
-        if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
-
-        const response = await findFriendsPending({ _id })
-
-        if (response.error) { return { error: { msg: "Cannot get friends", system: true }, status: 401 } }
-
-        const { friends } = response
-
-        const users = []
-
-        for (let i = 0; i < friends.length; i++) {
-            const f = friends[i];
-
-            const { user } = f.users[0] != _id ? await findById(f.users[0]) : await findById(f.users[1])
-
-            user.password = undefined
-            user.passwordResetToken = undefined
-            user.passwordResetExpires = undefined
-            user.authToken = undefined
-
-            users.push({ _id: f._id, user })
-        }
-
-        return { friends: users, status: 200 }
-    }
-
-    const listFriendsDeniedByUser = async({ _id, token }) => {
-        const tokenValid = validToken(token)
-
-        if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
-
-        const response = await findFriendsDeniedByUser({ _id })
-
-        if (response.error) { return { error: { msg: "Cannot get friends", system: true }, status: 401 } }
-
-        const { friends } = response
-
-        const users = []
-
-        for (let i = 0; i < friends.length; i++) {
-            const f = friends[i];
-
-            const { user } = f.users[0] != _id ? await findById(f.users[0]) : await findById(f.users[1])
-
-            user.password = undefined
-            user.passwordResetToken = undefined
-            user.passwordResetExpires = undefined
-            user.authToken = undefined
-
-            users.push({ _id: f._id, user })
-        }
-
-        return { friends: users, status: 200 }
     }
 
     // Events
@@ -439,37 +286,6 @@ export default function UserControl() {
         return response
     }
 
-    // DaoFriend
-    const registerFriend = async({ users }) => {
-        const response = await friendDao.register({ users })
-        return response
-    }
-
-    const findFriendsPending = async({ _id }) => {
-        const response = await friendDao.findFriendsPending({ _id })
-        return response
-    }
-
-    const findFriendsByUser = async({ _id }) => {
-        const response = await friendDao.findFriendsByUser({ _id })
-        return response
-    }
-
-    const findFriendsDeniedByUser = async({ _id }) => {
-        const response = await friendDao.findFriendsDeniedByUser({ _id })
-        return response
-    }
-
-    const findFriendly = async({ users }) => {
-        const response = await friendDao.findFriendly({ users })
-        return response
-    }
-
-    const findFriendlyById = async({ _id }) => {
-        const response = await friendDao.findFriendlyById({ _id })
-        return response
-    }
-
     return {
         userRegister,
         userLogin,
@@ -479,12 +295,5 @@ export default function UserControl() {
         selectUser,
         listUsers,
         EUserDisconnect,
-        sendInviteFriendship,
-        acceptFriendship,
-        deniedFriendship,
-        removeFriendship,
-        listFriends,
-        listFriendsPending,
-        listFriendsDeniedByUser,
     }
 }

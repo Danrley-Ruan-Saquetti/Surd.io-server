@@ -89,6 +89,8 @@ const User = mongoose.model("User", UserSchema)
 User.find().then(res => {
     res.forEach(user => {
         user.online = false
+        user.authToken = null
+
         user.save()
     })
 })

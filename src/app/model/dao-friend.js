@@ -1,8 +1,8 @@
 import Friend from "./model-friend.js"
 
 export default function FriendDao() {
-    const register = async({ users }) => {
-        const response = await Friend.create({ users }).then(async(res) => {
+    const register = async({ users, from, to }) => {
+        const response = await Friend.create({ users, from, to }).then(async(res) => {
             await res.populate("users")
             return { friend: res }
         }).catch(res => {
@@ -22,27 +22,7 @@ export default function FriendDao() {
         return response
     }
 
-    const findFriendly = async({ users }) => {
-        const response = await Friend.findOne({ users }).then(async(res) => {
-            return { friend: res }
-        }).catch(res => {
-            return { error: res }
-        })
-
-        return response
-    }
-
-    const findFriendlyById = async({ _id }) => {
-        const response = await Friend.findById(_id).then(async(res) => {
-            return { friend: res }
-        }).catch(res => {
-            return { error: res }
-        })
-
-        return response
-    }
-
-    const findByUser = async({ _id }) => {
+    const findByIdUser = async({ _id }) => {
         const response = await Friend.find({ users: _id }).then(async(res) => {
             return { friends: res }
         }).catch(res => {
@@ -52,9 +32,9 @@ export default function FriendDao() {
         return response
     }
 
-    const findFriendsPending = async({ _id }) => {
-        const response = await Friend.find({ users: _id, pending: true }).then(async(res) => {
-            return { friends: res }
+    const findFriendshipByUsers = async({ users }) => {
+        const response = await Friend.findOne({ users }).then(async(res) => {
+            return { friend: res }
         }).catch(res => {
             return { error: res }
         })
@@ -62,7 +42,17 @@ export default function FriendDao() {
         return response
     }
 
-    const findFriendsByUser = async({ _id }) => {
+    const findFriendshipById = async({ _id }) => {
+        const response = await Friend.findById(_id).then(async(res) => {
+            return { friend: res }
+        }).catch(res => {
+            return { error: res }
+        })
+
+        return response
+    }
+
+    const findFriendsByIdUser = async({ _id }) => {
         const response = await Friend.find({ users: _id, pending: false, accepted: true }).then(async(res) => {
             return { friends: res }
         }).catch(res => {
@@ -72,7 +62,27 @@ export default function FriendDao() {
         return response
     }
 
-    const findFriendsDeniedByUser = async({ _id }) => {
+    const findInvitesPendingOnHold = async({ _id }) => {
+        const response = await Friend.find({ users: _id, pending: true, from: _id }).then(async(res) => {
+            return { friends: res }
+        }).catch(res => {
+            return { error: res }
+        })
+
+        return response
+    }
+
+    const findInvitesPendingAwaiting = async({ _id }) => {
+        const response = await Friend.find({ users: _id, pending: true, to: _id }).then(async(res) => {
+            return { friends: res }
+        }).catch(res => {
+            return { error: res }
+        })
+
+        return response
+    }
+
+    const findInvitesDeniedByUser = async({ _id }) => {
         const response = await Friend.find({ users: _id, pending: false, accepted: false }).then(async(res) => {
             return { friends: res }
         }).catch(res => {
@@ -85,11 +95,12 @@ export default function FriendDao() {
     return {
         register,
         list,
-        findByUser,
-        findFriendsPending,
-        findFriendsByUser,
-        findFriendsDeniedByUser,
-        findFriendly,
-        findFriendlyById,
+        findByIdUser,
+        findFriendsByIdUser,
+        findFriendshipByUsers,
+        findFriendshipById,
+        findInvitesPendingOnHold,
+        findInvitesPendingAwaiting,
+        findInvitesDeniedByUser,
     }
 }

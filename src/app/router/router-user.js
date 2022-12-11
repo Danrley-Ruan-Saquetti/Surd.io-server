@@ -23,9 +23,10 @@ router.get("/", async(req, res) => {
 
 router.get("/:_id", async(req, res) => {
     const { _id } = req.params
+    const { token } = req.headers
 
     try {
-        const response = await userControl.selectUser({ _id })
+        const response = await userControl.selectUser({ _id, token })
 
         const { status } = response
 
@@ -76,18 +77,18 @@ router.post("/logout/:_id", async(req, res) => {
     const { _id } = req.params
     const { token } = req.headers
 
-    // try {
-    const response = await userControl.userLogout({ _id, token })
+    try {
+        const response = await userControl.userLogout({ _id, token })
 
-    const { status } = response
+        const { status } = response
 
-    response.status = undefined
+        response.status = undefined
 
-    return res.status(status).send(response)
-        // } catch (err) {
-    console.log(err);
-    //     return res.status(500).send({ error: { msg: "Cannot logout user", system: true } })
-    // }
+        return res.status(status).send(response)
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send({ error: { msg: "Cannot logout user", system: true } })
+    }
 })
 
 router.post("/forgot-password", async(req, res) => {
@@ -126,11 +127,11 @@ router.post("/reset-password", async(req, res) => {
 })
 
 router.post("/friends/send-invite", async(req, res) => {
-    const { users } = req.body
+    const { users, from, to } = req.body
     const { token } = req.headers
 
     try {
-        const response = await userControl.sendInviteFriendship({ users, token })
+        const response = await userControl.sendInviteFriendship({ users, from, to, token })
 
         const { status } = response
 
@@ -145,9 +146,11 @@ router.post("/friends/send-invite", async(req, res) => {
 
 router.post("/friends/accept-invite/:_id", async(req, res) => {
     const { _id } = req.params
+    const { token } = req.headers
+    const { recipient } = req.body
 
     try {
-        const response = await userControl.acceptFriendship({ _id })
+        const response = await userControl.acceptInviteFriendship({ _id, token, recipient })
 
         const { status } = response
 
@@ -162,9 +165,11 @@ router.post("/friends/accept-invite/:_id", async(req, res) => {
 
 router.post("/friends/denied-invite/:_id", async(req, res) => {
     const { _id } = req.params
+    const { token } = req.headers
+    const { recipient } = req.body
 
     try {
-        const response = await userControl.deniedFriendship({ _id })
+        const response = await userControl.deniedInviteFriendship({ _id, token, recipient })
 
         const { status } = response
 
@@ -177,11 +182,30 @@ router.post("/friends/denied-invite/:_id", async(req, res) => {
     }
 })
 
-router.post("/friends/remove-friendship/:_id", async(req, res) => {
+router.post("/friends/cancel-invite/:_id", async(req, res) => {
     const { _id } = req.params
 
     try {
-        const response = await userControl.removeFriendship({ _id })
+        const response = await userControl.cancelInviteFriendship({ _id })
+
+        const { status } = response
+
+        response.status = undefined
+
+        return res.status(status).send(response)
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send({ error: { msg: "Cannot cancel invite friendship", system: true } })
+    }
+})
+
+router.post("/friends/remove-friendship/:_id", async(req, res) => {
+    const { token } = req.headers
+    const { _id } = req.params
+    const { _idUser } = req.body
+
+    try {
+        const response = await userControl.removeFriendship({ _id, _idUser, token })
 
         const { status } = response
 
@@ -199,7 +223,7 @@ router.get("/friends/:_id", async(req, res) => {
     const { _id } = req.params
 
     try {
-        const response = await userControl.listFriends({ _id, token })
+        const response = await userControl.listFriendsById({ _id, token })
 
         const { status } = response
 
@@ -212,22 +236,40 @@ router.get("/friends/:_id", async(req, res) => {
     }
 })
 
-router.get("/friends/pending/:_id", async(req, res) => {
+router.get("/friends/pending/on-hold/:_id", async(req, res) => {
     const { token } = req.headers
     const { _id } = req.params
 
-    // try {
-    const response = await userControl.listFriendsPending({ _id, token })
+    try {
+        const response = await userControl.listInvitesPendingOnHold({ _id, token })
 
-    const { status } = response
+        const { status } = response
 
-    response.status = undefined
+        response.status = undefined
 
-    return res.status(status).send(response)
-        // } catch (err) {
-    console.log(err);
-    //     return res.status(500).send({ error: { msg: "Cannot get friends", system: true } })
-    // }
+        return res.status(status).send(response)
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send({ error: { msg: "Cannot get friends", system: true } })
+    }
+})
+
+router.get("/friends/pending/awaiting/:_id", async(req, res) => {
+    const { token } = req.headers
+    const { _id } = req.params
+
+    try {
+        const response = await userControl.listInvitesPendingAwaiting({ _id, token })
+
+        const { status } = response
+
+        response.status = undefined
+
+        return res.status(status).send(response)
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send({ error: { msg: "Cannot get friends", system: true } })
+    }
 })
 
 router.get("/friends/denied/:_id", async(req, res) => {
@@ -235,7 +277,7 @@ router.get("/friends/denied/:_id", async(req, res) => {
     const { _id } = req.params
 
     try {
-        const response = await userControl.listFriendsDeniedByUser({ _id, token })
+        const response = await userControl.listInvitesDeniedByUser({ _id, token })
 
         const { status } = response
 

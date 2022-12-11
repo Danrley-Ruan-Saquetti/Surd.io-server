@@ -14,6 +14,16 @@ const FriendSchema = mongoose.Schema({
         type: Boolean,
         default: false
     },
+    from: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        require: true
+    },
+    to: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        require: true
+    },
     createAt: {
         type: Date,
         default: Date.now,

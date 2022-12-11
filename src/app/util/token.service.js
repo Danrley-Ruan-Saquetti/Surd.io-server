@@ -2,8 +2,8 @@ import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
 dotenv.config()
 
-export const generatedToken = ({ id }) => {
-    return jwt.sign({ id }, process.env.SERVER_HASH_SECRET, {
+export const generatedToken = ({ _id }) => {
+    return jwt.sign({ _id }, process.env.SERVER_HASH_SECRET, {
         expiresIn: 86400,
     })
 }
