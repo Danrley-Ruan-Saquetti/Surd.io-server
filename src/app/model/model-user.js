@@ -1,5 +1,4 @@
 import mongoose from "../../database/index.js"
-import bcryptjs from "bcryptjs"
 
 const UserSchema = mongoose.Schema({
     username: {
@@ -74,6 +73,10 @@ const UserSchema = mongoose.Schema({
     authToken: {
         type: String,
         default: null
+    },
+    lastTimeOnline: {
+        type: Date,
+        default: Date.now
     },
     createAt: {
         type: Date,

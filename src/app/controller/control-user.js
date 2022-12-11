@@ -1,37 +1,12 @@
-import UserDao from "../model/dao-user.js"
-import jwt from "jsonwebtoken"
 import bcryptjs from "bcryptjs"
 import crypto from "crypto"
-import dotenv from "dotenv"
-dotenv.config()
+import UserDao from "../model/dao-user.js"
+import FriendDao from "../model/dao-friend.js"
+import { generatedToken, validToken } from "../util/token.service.js"
 
 export default function UserControl() {
     const userDao = UserDao()
-
-    const generatedToken = ({ id }) => {
-        return jwt.sign({ id }, process.env.SERVER_HASH_SECRET, {
-            expiresIn: 86400,
-        })
-    }
-
-    const validToken = (t) => {
-        const authHeader = t
-
-        if (!authHeader) { return { error: { msg: "No token provided", system: true }, valueOf: false } }
-        const parts = authHeader.split(" ")
-
-        if (parts.length != 2) { return { error: { msg: "Token error", system: true }, valueOf: false } }
-
-        const [scheme, token] = parts
-
-        if (!/^Bearer$/i.test(scheme)) { return { error: { msg: "Token malformatted", system: true }, valueOf: false } }
-
-        return jwt.verify(token, process.env.SERVER_HASH_SECRET, (err, decoded) => {
-            if (err) { return { error: { msg: "Token invalid", system: true }, valueOf: false } }
-
-            return { error: {}, valueOf: true }
-        })
-    }
+    const friendDao = FriendDao()
 
     const verifyValues = ({ username, email, password }) => {
         const error = []
@@ -92,15 +67,12 @@ export default function UserControl() {
 
         let user = null
 
-        console.log({ responseEmail });
         if (responseEmail.user) {
             user = responseEmail.user
         } else {
             const responseUsername = await findByUsername({ username: login })
 
             if (responseUsername.user) { user = responseUsername.user }
-
-            console.log({ responseUsername });
         }
 
         if (!user) { return { error: { msg: "User not found", system: true }, valueOf: false } }
@@ -128,6 +100,7 @@ export default function UserControl() {
         const token = generatedToken({ id: user })
 
         user.authToken = token
+        user.online = true
 
         await user.save()
 
@@ -135,7 +108,7 @@ export default function UserControl() {
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
 
-        return { user, status: 200 }
+        return { user, success: { msg: "User created successfully", system: true }, status: 200 }
     }
 
     const userLogin = async({ login = "", password = "" }) => {
@@ -162,6 +135,7 @@ export default function UserControl() {
 
         user.authToken = token
         user.online = true
+        user.lastTimeOnline = Date.now()
 
         await user.save()
 
@@ -169,7 +143,7 @@ export default function UserControl() {
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
 
-        return { user, status: 200 }
+        return { user, success: { msg: "User logged successfully", system: true }, status: 200 }
     }
 
     const userLogout = async({ _id, token }) => {
@@ -182,10 +156,11 @@ export default function UserControl() {
         if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
 
         user.online = false
+        user.lastTimeOnline = Date.now()
 
         await user.save()
 
-        return { status: 200 }
+        return { success: { msg: "User logged out successfully", system: true }, status: 200 }
     }
 
     const userForgotPassword = async({ email }) => {
@@ -205,20 +180,7 @@ export default function UserControl() {
 
         user.save()
 
-        // mailer.sendMail({
-        //     to: email,
-        //     from: admin.email,
-        //     template: "auth/forgot-password",
-        //     context: { token }
-        // }, (err) => {
-        //     if (err) {
-        //         return res.status(400).send({ error: "Cannot send forgot password email" })
-        //     }
-
-        //     return res.send({ admin, token })
-        // })
-
-        return { status: 200, token }
+        return { status: 200, success: { msg: "User created successfully", system: true }, token }
     }
 
     const userResetPassword = async({ email, password, token }) => {
@@ -236,7 +198,7 @@ export default function UserControl() {
 
         await user.save()
 
-        return { status: 200 }
+        return { success: { msg: "User reset password successfully", system: true }, status: 200 }
     }
 
     const selectUser = async({ _id }) => {
@@ -246,27 +208,263 @@ export default function UserControl() {
 
         const { user } = response
 
+        user.password = undefined
+        user.passwordResetToken = undefined
+        user.passwordResetExpires = undefined
+
         return { user, status: 200 }
     }
 
-    // Dao
+    const sendInviteFriendship = async({ users, token }) => {
+        // const tokenValid = validToken(token)
+
+        // if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
+
+        const responseFriendship = await findFriendly({ users })
+
+        if (responseFriendship.friend) { return { error: { msg: "User already is a friend", system: true }, status: 401 } }
+
+        const response = await registerFriend({ users })
+
+        if (response.error) { return { error: { msg: "Cannot send invite friend", system: true }, status: 400 } }
+
+        const { friend } = response
+
+        for (let i = 0; i < friend.users.length; i++) {
+            const user = friend.users[i]
+
+            user.password = undefined
+            user.passwordResetToken = undefined
+            user.passwordResetExpires = undefined
+            user.authToken = undefined
+        }
+
+        return { friend: friend.users, success: { msg: "Send invite friendship successfully", system: true }, status: 200 }
+    }
+
+    const acceptFriendship = async({ _id }) => {
+        const response = await findFriendlyById({ _id })
+
+        if (response.error) { return { error: { msg: "Friendship not found", system: true }, status: 401 } }
+
+        const { friend } = response
+
+        if (!friend.pending) { return { error: { msg: `Friendship already ${friend.accepted ? "accepted" : "denied"}`, system: true }, status: 401 } }
+
+        friend.pending = false
+        friend.accepted = true
+
+        friend.save()
+
+        return { success: { msg: "Accept friendship successfully", system: true }, status: 200 }
+    }
+
+    const removeFriendship = async({ _id }) => {
+        const response = await findFriendlyById({ _id })
+
+        if (response.error) { return { error: { msg: "Friendship not found", system: true }, status: 401 } }
+
+        const { friend } = response
+
+        friend.remove()
+
+        return { success: { msg: "Friendship removed successfully", system: true }, status: 200 }
+    }
+
+    const deniedFriendship = async({ _id }) => {
+        const response = await findFriendlyById({ _id })
+
+        if (response.error) { return { error: { msg: "Friendship not found", system: true }, status: 401 } }
+
+        const { friend } = response
+
+        if (!friend.pending) { return { error: { msg: `Friendship already ${friend.accepted ? "accepted" : "denied"}`, system: true }, status: 401 } }
+
+        friend.pending = false
+        friend.accepted = false
+
+        friend.save()
+
+        return { success: { msg: "Denied friendship successfully", system: true }, status: 200 }
+    }
+
+    const listUsers = async({ token }) => {
+        const tokenValid = validToken(token)
+
+        if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
+
+        const response = await list()
+
+        if (response.error) { return { error: { msg: "Cannot get users", system: true }, status: 401 } }
+
+        const { users } = response
+
+        users.forEach(user => {
+            user.password = undefined
+            user.passwordResetToken = undefined
+            user.passwordResetExpires = undefined
+        });
+
+        return { users, status: 200 }
+    }
+
+    const listFriends = async({ _id, token }) => {
+        const tokenValid = validToken(token)
+
+        if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
+
+        const response = await findFriendsByUser({ _id })
+
+        if (response.error) { return { error: { msg: "Cannot get friends", system: true }, status: 401 } }
+
+        const { friends } = response
+
+        const users = []
+
+        for (let i = 0; i < friends.length; i++) {
+            const f = friends[i];
+
+            const { user } = f.users[0] != _id ? await findById(f.users[0]) : await findById(f.users[1])
+
+            user.password = undefined
+            user.passwordResetToken = undefined
+            user.passwordResetExpires = undefined
+            user.authToken = undefined
+
+            users.push({ _id: f._id, user })
+        }
+
+        return { friends: users, status: 200 }
+    }
+
+    const listFriendsPending = async({ _id, token }) => {
+        const tokenValid = validToken(token)
+
+        if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
+
+        const response = await findFriendsPending({ _id })
+
+        if (response.error) { return { error: { msg: "Cannot get friends", system: true }, status: 401 } }
+
+        const { friends } = response
+
+        const users = []
+
+        for (let i = 0; i < friends.length; i++) {
+            const f = friends[i];
+
+            const { user } = f.users[0] != _id ? await findById(f.users[0]) : await findById(f.users[1])
+
+            user.password = undefined
+            user.passwordResetToken = undefined
+            user.passwordResetExpires = undefined
+            user.authToken = undefined
+
+            users.push({ _id: f._id, user })
+        }
+
+        return { friends: users, status: 200 }
+    }
+
+    const listFriendsDeniedByUser = async({ _id, token }) => {
+        const tokenValid = validToken(token)
+
+        if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
+
+        const response = await findFriendsDeniedByUser({ _id })
+
+        if (response.error) { return { error: { msg: "Cannot get friends", system: true }, status: 401 } }
+
+        const { friends } = response
+
+        const users = []
+
+        for (let i = 0; i < friends.length; i++) {
+            const f = friends[i];
+
+            const { user } = f.users[0] != _id ? await findById(f.users[0]) : await findById(f.users[1])
+
+            user.password = undefined
+            user.passwordResetToken = undefined
+            user.passwordResetExpires = undefined
+            user.authToken = undefined
+
+            users.push({ _id: f._id, user })
+        }
+
+        return { friends: users, status: 200 }
+    }
+
+    // Events
+    const EUserDisconnect = async({ _id }) => {
+        const response = await findById({ _id })
+
+        if (response.error) { return { error: { msg: "User not found", system: true }, status: 400 } }
+
+        const { user } = response
+
+        user.online = false
+        user.lastTimeOnline = Date.now()
+
+        await user.save()
+
+        return { status: 200 }
+    }
+
+    // DaoUser
     const register = async({ username = "", email = "", password = "", online = false, idServerConnected = null, level = 0, xp = 0, xpUpLevel = 0, recordPoints = 0 }) => {
         const response = await userDao.register({ username, email, password, online, idServerConnected, level, xp, xpUpLevel, recordPoints })
         return response
     }
 
-    const findById = async({ _id }, select = "") => {
-        const response = await userDao.findById({ _id }, { select })
+    const findById = async({ _id }) => {
+        const response = await userDao.findById({ _id })
         return response
     }
 
-    const findByEmail = async({ email }, select = "") => {
-        const response = await userDao.findByEmail({ email }, { select })
+    const findByEmail = async({ email }) => {
+        const response = await userDao.findByEmail({ email })
         return response
     }
 
-    const findByUsername = async({ username }, select = "") => {
-        const response = await userDao.findByUsername({ username }, { select })
+    const findByUsername = async({ username }) => {
+        const response = await userDao.findByUsername({ username })
+        return response
+    }
+
+    const list = async() => {
+        const response = await userDao.list()
+        return response
+    }
+
+    // DaoFriend
+    const registerFriend = async({ users }) => {
+        const response = await friendDao.register({ users })
+        return response
+    }
+
+    const findFriendsPending = async({ _id }) => {
+        const response = await friendDao.findFriendsPending({ _id })
+        return response
+    }
+
+    const findFriendsByUser = async({ _id }) => {
+        const response = await friendDao.findFriendsByUser({ _id })
+        return response
+    }
+
+    const findFriendsDeniedByUser = async({ _id }) => {
+        const response = await friendDao.findFriendsDeniedByUser({ _id })
+        return response
+    }
+
+    const findFriendly = async({ users }) => {
+        const response = await friendDao.findFriendly({ users })
+        return response
+    }
+
+    const findFriendlyById = async({ _id }) => {
+        const response = await friendDao.findFriendlyById({ _id })
         return response
     }
 
@@ -277,5 +475,14 @@ export default function UserControl() {
         userForgotPassword,
         userResetPassword,
         selectUser,
+        listUsers,
+        EUserDisconnect,
+        sendInviteFriendship,
+        acceptFriendship,
+        deniedFriendship,
+        removeFriendship,
+        listFriends,
+        listFriendsPending,
+        listFriendsDeniedByUser,
     }
 }
