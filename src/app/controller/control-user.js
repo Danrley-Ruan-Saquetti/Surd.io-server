@@ -149,9 +149,11 @@ export default function UserControl() {
     const userLogout = async({ _id, token }) => {
         const response = await findById({ _id })
 
-        if (response.error) { return { error: { msg: "User not found", system: true }, status: 400 } }
+        if (!response.user) { return { error: { msg: "User not found", system: true }, status: 400 } }
 
         const { user } = response
+
+        if (!user.online) { return { error: { msg: "User already logged out", system: true }, status: 401 } }
 
         if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
 
@@ -204,7 +206,7 @@ export default function UserControl() {
     const selectUser = async({ _id }) => {
         const response = await findById({ _id })
 
-        if (response.error) { return { error: { msg: "User not found", system: true }, status: 401 } }
+        if (!response.user) { return { error: { msg: "User not found", system: true }, status: 401 } }
 
         const { user } = response
 
