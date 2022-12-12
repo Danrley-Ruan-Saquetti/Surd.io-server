@@ -9,20 +9,6 @@ export const generatedToken = ({ _id }) => {
     })
 }
 
-export const validAuth = async(token, _id) => {
-    const response = await UserDao().findById({ _id })
-
-    if (!response.user) { return { error: { msg: "User not defined", system: true }, status: 400, valueOf: false } }
-
-    const { user } = response
-
-    if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401, valueOf: false } }
-
-    if (!user.online) { return { error: { msg: "User offline", system: true }, status: 401, valueOf: false } }
-
-    return { error: null, valueOf: true }
-}
-
 export const validToken = (t) => {
     const authHeader = t
 

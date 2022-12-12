@@ -1,5 +1,5 @@
 import ServerDao from "../model/dao-server.js"
-import { validToken, validAuth } from "../util/token.service.js"
+import { validToken } from "../util/token.service.js"
 
 export default function ServerControl() {
     const serverDao = ServerDao()
@@ -20,7 +20,7 @@ export default function ServerControl() {
     }
 
     const listServers = async({ token, _id }) => {
-        const authValid = await validAuth(token, _id)
+        const authValid = validToken(token, _id)
 
         if (!authValid.valueOf) { return authValid }
 

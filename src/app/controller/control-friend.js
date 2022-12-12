@@ -1,6 +1,6 @@
 import FriendDao from "../model/dao-friend.js"
 import UserDao from "../model/dao-user.js"
-import { validAuth } from "../util/token.service.js"
+import { validToken } from "../util/token.service.js"
 
 export default function FriendControl() {
     const friendDao = FriendDao()
@@ -21,7 +21,7 @@ export default function FriendControl() {
             }
         }
 
-        const authValid = await validAuth(token, from)
+        const authValid = validToken(token)
 
         if (!authValid.valueOf) { return authValid }
 
@@ -50,7 +50,7 @@ export default function FriendControl() {
     }
 
     const acceptInviteFriendship = async({ _id, recipient, token }) => {
-        const authValid = await validAuth(token, recipient)
+        const authValid = validToken(token)
 
         if (!authValid.valueOf) { return authValid }
 
@@ -71,7 +71,7 @@ export default function FriendControl() {
     }
 
     const removeFriendship = async({ _id, _idUser, token }) => {
-        const authValid = await validAuth(token, _idUser)
+        const authValid = validToken(token)
 
         if (!authValid.valueOf) { return authValid }
 
@@ -87,7 +87,7 @@ export default function FriendControl() {
     }
 
     const cancelInvite = async({ _id, _idUser, token }) => {
-        const authValid = await validAuth(token, _idUser)
+        const authValid = validToken(token)
 
         if (!authValid.valueOf) { return authValid }
 
@@ -105,7 +105,7 @@ export default function FriendControl() {
     }
 
     const deniedInviteFriendship = async({ _id, recipient, token }) => {
-        const authValid = await validAuth(token, recipient)
+        const authValid = validToken(token)
 
         if (!authValid.valueOf) { return authValid }
 
@@ -126,7 +126,7 @@ export default function FriendControl() {
     }
 
     const listFriendsById = async({ _id, token }) => {
-        const authValid = await validAuth(token, _id)
+        const authValid = validToken(token)
 
         if (!authValid.valueOf) { return authValid }
 
@@ -155,7 +155,7 @@ export default function FriendControl() {
     }
 
     const listInvitesPendingOnHold = async({ _id, token }) => {
-        const authValid = await validAuth(token, _id)
+        const authValid = validToken(token)
 
         if (!authValid.valueOf) { return authValid }
 
@@ -184,7 +184,7 @@ export default function FriendControl() {
     }
 
     const listInvitesPendingAwaiting = async({ _id, token }) => {
-        const authValid = await validAuth(token, _id)
+        const authValid = validToken(token)
 
         if (!authValid.valueOf) { return authValid }
 
@@ -213,7 +213,7 @@ export default function FriendControl() {
     }
 
     const listInvitesDeniedByUser = async({ _id, token }) => {
-        const authValid = await validAuth(token, _id)
+        const authValid = validToken(token)
 
         if (!authValid.valueOf) { return authValid }
 

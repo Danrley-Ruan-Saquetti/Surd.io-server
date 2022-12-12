@@ -2,7 +2,7 @@ import bcryptjs from "bcryptjs"
 import crypto from "crypto"
 import UserDao from "../model/dao-user.js"
 import FriendDao from "../model/dao-friend.js"
-import { generatedToken, validToken, validAuth } from "../util/token.service.js"
+import { generatedToken, validToken } from "../util/token.service.js"
 
 export default function UserControl() {
     const userDao = UserDao()
@@ -148,7 +148,7 @@ export default function UserControl() {
     }
 
     const userLogout = async({ _id, token }) => {
-        const authValid = await validAuth(token, _id)
+        const authValid = validToken(token, _id)
 
         if (!authValid.valueOf) { return authValid }
 
