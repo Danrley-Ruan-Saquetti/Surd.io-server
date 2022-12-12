@@ -1,5 +1,6 @@
 import FriendDao from "../model/dao-friend.js"
 import UserDao from "../model/dao-user.js"
+import { validAuth } from "../util/token.service.js"
 
 export default function FriendControl() {
     const friendDao = FriendDao()
@@ -20,13 +21,9 @@ export default function FriendControl() {
             }
         }
 
-        const responseSender = await userDao.findById({ _id: from })
+        const authValid = await validAuth(token, from)
 
-        if (!responseSender.user) { return { error: { msg: "Sender not defined", system: true }, status: 400 } }
-
-        const { user: userSender } = responseSender
-
-        if (userSender.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
+        if (authValid.error) { return authValid }
 
         const responseRecipient = await userDao.findById({ _id: to })
 
@@ -53,13 +50,9 @@ export default function FriendControl() {
     }
 
     const acceptInviteFriendship = async({ _id, recipient, token }) => {
-        const responseRecipient = await userDao.findById({ _id: recipient })
+        const authValid = await validAuth(token, recipient)
 
-        if (!responseRecipient.user) { return { error: { msg: "Recipient not defined", system: true }, status: 400 } }
-
-        const { user: userRecipient } = responseRecipient
-
-        if (userRecipient.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
+        if (authValid.error) { return authValid }
 
         const response = await findFriendshipById({ _id })
 
@@ -78,13 +71,9 @@ export default function FriendControl() {
     }
 
     const removeFriendship = async({ _id, _idUser, token }) => {
-        const responseUser = await userDao.findById({ _id: _idUser })
+        const authValid = await validAuth(token, _idUser)
 
-        if (!responseUser.user) { return { error: { msg: "User not defined", system: true }, status: 400 } }
-
-        const { user } = responseUser
-
-        if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
+        if (authValid.error) { return authValid }
 
         const response = await findFriendshipById({ _id })
 
@@ -98,13 +87,9 @@ export default function FriendControl() {
     }
 
     const cancelInvite = async({ _id, _idUser, token }) => {
-        const responseUser = await userDao.findById({ _id: _idUser })
+        const authValid = await validAuth(token, _idUser)
 
-        if (!responseUser.user) { return { error: { msg: "User not defined", system: true }, status: 400 } }
-
-        const { user } = responseUser
-
-        if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
+        if (authValid.error) { return authValid }
 
         const response = await findFriendshipById({ _id })
 
@@ -120,13 +105,9 @@ export default function FriendControl() {
     }
 
     const deniedInviteFriendship = async({ _id, recipient, token }) => {
-        const responseRecipient = await userDao.findById({ _id: recipient })
+        const authValid = await validAuth(token, recipient)
 
-        if (!responseRecipient.user) { return { error: { msg: "Recipient not defined", system: true }, status: 400 } }
-
-        const { user: userRecipient } = responseRecipient
-
-        if (userRecipient.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
+        if (authValid.error) { return authValid }
 
         const response = await findFriendshipById({ _id })
 
@@ -145,13 +126,9 @@ export default function FriendControl() {
     }
 
     const listFriendsById = async({ _id, token }) => {
-        const responseUser = await userDao.findById({ _id })
+        const authValid = await validAuth(token, _id)
 
-        if (!responseUser.user) { return { error: { msg: "User not defined", system: true }, status: 400 } }
-
-        const { user } = responseUser
-
-        if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
+        if (authValid.error) { return authValid }
 
         const response = await findFriendsByIdUser({ _id })
 
@@ -178,13 +155,9 @@ export default function FriendControl() {
     }
 
     const listInvitesPendingOnHold = async({ _id, token }) => {
-        const responseUser = await userDao.findById({ _id })
+        const authValid = await validAuth(token, _id)
 
-        if (!responseUser.user) { return { error: { msg: "User not defined", system: true }, status: 400 } }
-
-        const { user } = responseUser
-
-        if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
+        if (authValid.error) { return authValid }
 
         const response = await findInvitesPendingOnHold({ _id })
 
@@ -211,13 +184,9 @@ export default function FriendControl() {
     }
 
     const listInvitesPendingAwaiting = async({ _id, token }) => {
-        const responseUser = await userDao.findById({ _id })
+        const authValid = await validAuth(token, _id)
 
-        if (!responseUser.user) { return { error: { msg: "User not defined", system: true }, status: 400 } }
-
-        const { user } = responseUser
-
-        if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
+        if (authValid.error) { return authValid }
 
         const response = await findInvitesPendingAwaiting({ _id })
 
@@ -244,13 +213,9 @@ export default function FriendControl() {
     }
 
     const listInvitesDeniedByUser = async({ _id, token }) => {
-        const responseUser = await userDao.findById({ _id })
+        const authValid = await validAuth(token, _id)
 
-        if (!responseUser.user) { return { error: { msg: "User not defined", system: true }, status: 400 } }
-
-        const { user } = responseUser
-
-        if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
+        if (authValid.error) { return authValid }
 
         const response = await findInvitesDeniedByUser({ _id })
 

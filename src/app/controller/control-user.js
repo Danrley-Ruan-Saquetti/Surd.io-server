@@ -2,7 +2,7 @@ import bcryptjs from "bcryptjs"
 import crypto from "crypto"
 import UserDao from "../model/dao-user.js"
 import FriendDao from "../model/dao-friend.js"
-import { generatedToken, validToken } from "../util/token.service.js"
+import { generatedToken, validToken, validAuth } from "../util/token.service.js"
 
 export default function UserControl() {
     const userDao = UserDao()
@@ -148,15 +148,15 @@ export default function UserControl() {
     }
 
     const userLogout = async({ _id, token }) => {
+        const authValid = await validAuth(token, _id)
+
+        if (authValid.error) { return authValid }
+
         const response = await findById({ _id })
 
         if (!response.user) { return { error: { msg: "User not found", system: true }, status: 400 } }
 
         const { user } = response
-
-        if (!user.online) { return { error: { msg: "User already logged out", system: true }, status: 401 } }
-
-        if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
 
         user.online = false
         user.lastTimeOnline = Date.now()

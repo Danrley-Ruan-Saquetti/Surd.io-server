@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken"
+import UserDao from "../model/dao-user.js"
 import dotenv from "dotenv"
 dotenv.config()
 
@@ -6,6 +7,16 @@ export const generatedToken = ({ _id }) => {
     return jwt.sign({ _id }, process.env.SERVER_HASH_SECRET, {
         expiresIn: 86400,
     })
+}
+
+export const validAuth = async(token, _id) => {
+    const response = await UserDao().findById({ _id })
+
+    if (!response.user) { return { error: { msg: "User not defined", system: true }, status: 400 } }
+
+    const { user } = response
+
+    if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401 } }
 }
 
 export const validToken = (t) => {
