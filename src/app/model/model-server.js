@@ -1,18 +1,13 @@
 import mongoose from "../../database/index.js"
 
 const ServerSchema = mongoose.Schema({
-    username: {
+    name: {
         type: String,
         require: true
     },
-    email: {
-        type: String,
-        require: true
-    },
-    password: {
-        type: String,
-        require: true,
-        select: false
+    lobby: {
+        type: Boolean,
+        default: false
     },
     createAt: {
         type: Date,

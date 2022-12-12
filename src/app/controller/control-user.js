@@ -150,7 +150,7 @@ export default function UserControl() {
     const userLogout = async({ _id, token }) => {
         const authValid = await validAuth(token, _id)
 
-        if (authValid.error) { return authValid }
+        if (!authValid.valueOf) { return authValid }
 
         const response = await findById({ _id })
 

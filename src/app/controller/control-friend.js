@@ -23,7 +23,7 @@ export default function FriendControl() {
 
         const authValid = await validAuth(token, from)
 
-        if (authValid.error) { return authValid }
+        if (!authValid.valueOf) { return authValid }
 
         const responseRecipient = await userDao.findById({ _id: to })
 
@@ -52,7 +52,7 @@ export default function FriendControl() {
     const acceptInviteFriendship = async({ _id, recipient, token }) => {
         const authValid = await validAuth(token, recipient)
 
-        if (authValid.error) { return authValid }
+        if (!authValid.valueOf) { return authValid }
 
         const response = await findFriendshipById({ _id })
 
@@ -73,7 +73,7 @@ export default function FriendControl() {
     const removeFriendship = async({ _id, _idUser, token }) => {
         const authValid = await validAuth(token, _idUser)
 
-        if (authValid.error) { return authValid }
+        if (!authValid.valueOf) { return authValid }
 
         const response = await findFriendshipById({ _id })
 
@@ -89,7 +89,7 @@ export default function FriendControl() {
     const cancelInvite = async({ _id, _idUser, token }) => {
         const authValid = await validAuth(token, _idUser)
 
-        if (authValid.error) { return authValid }
+        if (!authValid.valueOf) { return authValid }
 
         const response = await findFriendshipById({ _id })
 
@@ -107,7 +107,7 @@ export default function FriendControl() {
     const deniedInviteFriendship = async({ _id, recipient, token }) => {
         const authValid = await validAuth(token, recipient)
 
-        if (authValid.error) { return authValid }
+        if (!authValid.valueOf) { return authValid }
 
         const response = await findFriendshipById({ _id })
 
@@ -128,7 +128,7 @@ export default function FriendControl() {
     const listFriendsById = async({ _id, token }) => {
         const authValid = await validAuth(token, _id)
 
-        if (authValid.error) { return authValid }
+        if (!authValid.valueOf) { return authValid }
 
         const response = await findFriendsByIdUser({ _id })
 
@@ -157,7 +157,7 @@ export default function FriendControl() {
     const listInvitesPendingOnHold = async({ _id, token }) => {
         const authValid = await validAuth(token, _id)
 
-        if (authValid.error) { return authValid }
+        if (!authValid.valueOf) { return authValid }
 
         const response = await findInvitesPendingOnHold({ _id })
 
@@ -186,7 +186,7 @@ export default function FriendControl() {
     const listInvitesPendingAwaiting = async({ _id, token }) => {
         const authValid = await validAuth(token, _id)
 
-        if (authValid.error) { return authValid }
+        if (!authValid.valueOf) { return authValid }
 
         const response = await findInvitesPendingAwaiting({ _id })
 
@@ -215,7 +215,7 @@ export default function FriendControl() {
     const listInvitesDeniedByUser = async({ _id, token }) => {
         const authValid = await validAuth(token, _id)
 
-        if (authValid.error) { return authValid }
+        if (!authValid.valueOf) { return authValid }
 
         const response = await findInvitesDeniedByUser({ _id })
 
