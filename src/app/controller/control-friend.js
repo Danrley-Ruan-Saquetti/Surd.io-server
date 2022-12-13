@@ -8,20 +8,20 @@ export default function FriendControl() {
 
     // Use Cases
     const sendInviteFriendship = async({ users, from, to, token }) => {
-        if (from === to) { return { error: { msg: "Cannot send invite friendship to yourself", system: true }, status: 401 } }
+        if (from === to) { return { error: { msg: "Cannot send invite to yourself", system: true }, status: 401 } }
 
         const responseFriendship = await findFriendshipByUsers({ users })
 
-        if (responseFriendship.friend) {
-            if (responseFriendship.friend.pending) {
+        if (responseFriendship.friendship) {
+            if (responseFriendship.friendship.pending) {
                 return { error: { msg: "Invite already send", system: true }, status: 401 }
             }
-            if (responseFriendship.friend.accepted) {
-                return { error: { msg: "User already friend", system: true }, status: 401 }
+            if (responseFriendship.friendship.accepted) {
+                return { error: { msg: "User already is friend", system: true }, status: 401 }
             }
         }
 
-        const authValid = validToken(token)
+        const authValid = await validToken(token, from)
 
         if (!authValid.valueOf) { return authValid }
 
@@ -33,10 +33,10 @@ export default function FriendControl() {
 
         if (response.error) { return { error: { msg: "Cannot send invite friend", system: true }, status: 400 } }
 
-        const { friend } = response
+        const { invite } = response
 
-        for (let i = 0; i < friend.users.length; i++) {
-            const user = friend.users[i]
+        for (let i = 0; i < invite.users.length; i++) {
+            const user = invite.users[i]
 
             user.password = undefined
             user.passwordResetToken = undefined
@@ -44,89 +44,95 @@ export default function FriendControl() {
             user.authToken = undefined
         }
 
-        responseFriendship.friend && responseFriendship.friend.remove()
+        responseFriendship.friendship && responseFriendship.friendship.remove()
 
-        return { friend: { users: friend.users, _id: friend._id }, success: { msg: "Send invite friendship successfully", system: true }, status: 200 }
+        return { invite: { users: invite.users, _id: invite._id }, success: { msg: "Send invite friendship successfully", system: true }, status: 200 }
     }
 
     const acceptInviteFriendship = async({ _id, recipient, token }) => {
-        const authValid = validToken(token)
+        const authValid = await validToken(token, recipient)
 
         if (!authValid.valueOf) { return authValid }
 
         const response = await findFriendshipById({ _id })
 
-        if (!response.friend) { return { error: { msg: "Friendship not found", system: true }, status: 401 } }
+        if (!response.friendship) { return { error: { msg: "Invite not found", system: true }, status: 401 } }
 
-        const { friend } = response
+        const { friendship } = response
 
-        if (!friend.pending) { return { error: { msg: `Friendship already ${friend.accepted ? "accepted" : "denied"}`, system: true }, status: 401 } }
+        if (friendship.to != recipient) { return { error: { msg: "Access denied", system: true }, status: 401 } }
 
-        friend.pending = false
-        friend.accepted = true
+        if (!friendship.pending) { return { error: { msg: `Invite already ${friendship.accepted ? "accepted" : "denied"}`, system: true }, status: 401 } }
 
-        friend.save()
+        friendship.pending = false
+        friendship.accepted = true
 
-        return { success: { msg: "Accept friendship successfully", system: true }, status: 200 }
+        friendship.save()
+
+        return { success: { msg: "Accept invite successfully", system: true }, status: 200 }
     }
 
     const removeFriendship = async({ _id, _idUser, token }) => {
-        const authValid = validToken(token)
+        const authValid = await validToken(token, _idUser)
 
         if (!authValid.valueOf) { return authValid }
 
         const response = await findFriendshipById({ _id })
 
-        if (!response.friend) { return { error: { msg: "Friendship not found", system: true }, status: 401 } }
+        if (!response.friendship) { return { error: { msg: "Friendship not found", system: true }, status: 401 } }
 
-        const { friend } = response
+        const { friendship } = response
 
-        friend.remove()
+        friendship.remove()
 
         return { success: { msg: "Friendship removed successfully", system: true }, status: 200 }
     }
 
     const cancelInvite = async({ _id, _idUser, token }) => {
-        const authValid = validToken(token)
+        const authValid = await validToken(token, _idUser)
 
         if (!authValid.valueOf) { return authValid }
 
         const response = await findFriendshipById({ _id })
 
-        if (!response.friend) { return { error: { msg: "Friendship not found", system: true }, status: 401 } }
+        if (!response.friendship) { return { error: { msg: "Invite not found", system: true }, status: 401 } }
 
-        if (!response.friend.pending) { return { error: { msg: "Cannot cancel invite", system: true }, status: 401 } }
+        const { friendship } = response
 
-        const { friend } = response
+        if (friendship.from != _idUser) { return { error: { msg: "Access denied", system: true }, status: 401 } }
 
-        friend.remove()
+        if (!response.friendship.pending && response.friendship.accepted) { return { error: { msg: "Cannot cancel invite", system: true }, status: 401 } }
+
+        friendship.remove()
 
         return { success: { msg: "Invite canceled successfully", system: true }, status: 200 }
     }
 
     const deniedInviteFriendship = async({ _id, recipient, token }) => {
-        const authValid = validToken(token)
+        const authValid = await validToken(token, recipient)
 
         if (!authValid.valueOf) { return authValid }
 
         const response = await findFriendshipById({ _id })
 
-        if (response.error) { return { error: { msg: "Friendship not found", system: true }, status: 401 } }
+        if (response.error) { return { error: { msg: "Invite not found", system: true }, status: 401 } }
 
-        const { friend } = response
+        const { friendship } = response
 
-        if (!friend.pending) { return { error: { msg: `Friendship already ${friend.accepted ? "accepted" : "denied"}`, system: true }, status: 401 } }
+        if (friendship.to != recipient) { return { error: { msg: "Access denied", system: true }, status: 401 } }
 
-        friend.pending = false
-        friend.accepted = false
+        if (!friendship.pending) { return { error: { msg: `Invite already ${friendship.accepted ? "accepted" : "denied"}`, system: true }, status: 401 } }
 
-        friend.save()
+        friendship.pending = false
+        friendship.accepted = false
 
-        return { success: { msg: "Denied friendship successfully", system: true }, status: 200 }
+        friendship.save()
+
+        return { success: { msg: "Denied invite successfully", system: true }, status: 200 }
     }
 
     const listFriendsById = async({ _id, token }) => {
-        const authValid = validToken(token)
+        const authValid = await validToken(token, _id)
 
         if (!authValid.valueOf) { return authValid }
 
@@ -155,20 +161,20 @@ export default function FriendControl() {
     }
 
     const listInvitesPendingOnHold = async({ _id, token }) => {
-        const authValid = validToken(token)
+        const authValid = await validToken(token, _id)
 
         if (!authValid.valueOf) { return authValid }
 
         const response = await findInvitesPendingOnHold({ _id })
 
-        if (response.error) { return { error: { msg: "Cannot get friends", system: true }, status: 401 } }
+        if (response.error) { return { error: { msg: "Cannot get invites", system: true }, status: 401 } }
 
-        const { friends } = response
+        const { invites } = response
 
         const users = []
 
-        for (let i = 0; i < friends.length; i++) {
-            const f = friends[i];
+        for (let i = 0; i < invites.length; i++) {
+            const f = invites[i];
 
             const { user } = f.users[0] != _id ? await userDao.findById(f.users[0]) : await userDao.findById(f.users[1])
 
@@ -180,24 +186,24 @@ export default function FriendControl() {
             users.push({ _id: f._id, user })
         }
 
-        return { friends: users, status: 200 }
+        return { invites: users, status: 200 }
     }
 
     const listInvitesPendingAwaiting = async({ _id, token }) => {
-        const authValid = validToken(token)
+        const authValid = await validToken(token, _id)
 
         if (!authValid.valueOf) { return authValid }
 
         const response = await findInvitesPendingAwaiting({ _id })
 
-        if (response.error) { return { error: { msg: "Cannot get friends", system: true }, status: 401 } }
+        if (response.error) { return { error: { msg: "Cannot get invites", system: true }, status: 401 } }
 
-        const { friends } = response
+        const { invites } = response
 
         const users = []
 
-        for (let i = 0; i < friends.length; i++) {
-            const f = friends[i];
+        for (let i = 0; i < invites.length; i++) {
+            const f = invites[i];
 
             const { user } = f.users[0] != _id ? await userDao.findById(f.users[0]) : await userDao.findById(f.users[1])
 
@@ -209,24 +215,24 @@ export default function FriendControl() {
             users.push({ _id: f._id, user })
         }
 
-        return { friends: users, status: 200 }
+        return { invites: users, status: 200 }
     }
 
     const listInvitesDeniedByUser = async({ _id, token }) => {
-        const authValid = validToken(token)
+        const authValid = await validToken(token, _id)
 
         if (!authValid.valueOf) { return authValid }
 
         const response = await findInvitesDeniedByUser({ _id })
 
-        if (response.error) { return { error: { msg: "Cannot get friends", system: true }, status: 401 } }
+        if (response.error) { return { error: { msg: "Cannot get invites", system: true }, status: 401 } }
 
-        const { friends } = response
+        const { invites } = response
 
         const users = []
 
-        for (let i = 0; i < friends.length; i++) {
-            const f = friends[i];
+        for (let i = 0; i < invites.length; i++) {
+            const f = invites[i];
 
             const { user } = f.users[0] != _id ? await userDao.findById(f.users[0]) : await userDao.findById(f.users[1])
 
@@ -238,7 +244,7 @@ export default function FriendControl() {
             users.push({ _id: f._id, user })
         }
 
-        return { friends: users, status: 200 }
+        return { invites: users, status: 200 }
     }
 
     // DaoFriend
@@ -274,11 +280,6 @@ export default function FriendControl() {
 
     const findFriendshipById = async({ _id }) => {
         const response = await friendDao.findFriendshipById({ _id })
-        return response
-    }
-
-    const findByIdUser = async({ _id }) => {
-        const response = await friendDao.findByIdUser({ _id })
         return response
     }
 
