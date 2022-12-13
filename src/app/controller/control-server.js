@@ -6,11 +6,11 @@ export default function ServerControl() {
 
     // Use Cases
     const createServer = async({ name, lobby = false, token }) => {
-        const tokenValid = validToken(token)
-
-        if (!tokenValid.valueOf) { return tokenValid }
-
         if (!name) { return { erros: { msg: "Name undefined", name: true }, status: 400 } }
+
+        const responseName = await findByName({ name })
+
+        if (responseName.server) { return { erros: { msg: "Name already exist", name: true }, status: 400 } }
 
         const response = await register({ name, lobby })
 
@@ -20,7 +20,7 @@ export default function ServerControl() {
     }
 
     const listServers = async({ token, _id }) => {
-        const authValid = validToken(token, _id)
+        const authValid = await validToken(token, _id)
 
         if (!authValid.valueOf) { return authValid }
 
