@@ -238,11 +238,11 @@ export default function UserControl() {
 
         const { user } = response
 
-        const responseLobby = await serverControl.findById({ _id })
+        const responseServer = await serverControl.findById({ _id })
 
-        if (!responseLobby.server) { return { error: { msg: "Cannot connect lobby, try again", system: true }, status: 401 } }
+        if (!responseServer.server) { return { error: { msg: "Cannot connect lobby, try again", system: true }, status: 401 } }
 
-        const { server } = responseLobby
+        const { server } = responseServer
 
         user.idServerConnected = server._id
 

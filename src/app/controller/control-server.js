@@ -1,8 +1,10 @@
 import ServerDao from "../model/dao-server.js"
 import { validToken } from "../util/token.service.js"
+import ChatControl from "./control-chat.js"
 
 export default function ServerControl() {
     const serverDao = ServerDao()
+    const chatControl = ChatControl()
 
     // Use Cases
     const createServer = async({ name, lobby = false, token }) => {
@@ -16,7 +18,17 @@ export default function ServerControl() {
 
         if (response.error) { return { erros: { msg: "Cannot create server", system: true }, status: 400 } }
 
-        return { success: { msg: "", system: true }, status: 200 }
+        const { server } = response
+
+        const responseChat = await chatControl.createChat({ idServer: server._id })
+
+        if (!responseChat.valueOf) {
+            await server.remove()
+
+            return responseChat
+        }
+
+        return { success: { msg: "Server created successfully", system: true }, status: 200 }
     }
 
     const listServers = async({ token, _id }) => {
