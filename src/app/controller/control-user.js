@@ -1,12 +1,10 @@
 import bcryptjs from "bcryptjs"
 import crypto from "crypto"
 import UserDao from "../model/dao-user.js"
-import FriendDao from "../model/dao-friend.js"
 import { generatedToken, validToken } from "../util/token.service.js"
 
 export default function UserControl() {
     const userDao = UserDao()
-    const friendDao = FriendDao()
 
     const verifyValues = ({ username, email, password }) => {
         const error = []
@@ -148,7 +146,7 @@ export default function UserControl() {
     }
 
     const userLogout = async({ _id, token }) => {
-        const authValid = validToken(token, _id)
+        const authValid = await validToken(token, _id)
 
         if (!authValid.valueOf) { return authValid }
 
@@ -183,7 +181,7 @@ export default function UserControl() {
 
         user.save()
 
-        return { status: 200, success: { msg: "User created successfully", system: true }, token }
+        return { status: 200, success: { msg: "Check your e-mail for reset password", system: true }, token }
     }
 
     const userResetPassword = async({ email, password, token }) => {
@@ -201,11 +199,11 @@ export default function UserControl() {
 
         await user.save()
 
-        return { success: { msg: "User reset password successfully", system: true }, status: 200 }
+        return { success: { msg: "Reset password successfully", system: true }, status: 200 }
     }
 
     const selectUser = async({ _id, token }) => {
-        const tokenValid = validToken(token)
+        const tokenValid = await validToken(token, _id)
 
         if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
 
@@ -223,8 +221,8 @@ export default function UserControl() {
         return { user, status: 200 }
     }
 
-    const listUsers = async({ token }) => {
-        const tokenValid = validToken(token)
+    const listUsers = async({ _id, token }) => {
+        const tokenValid = await validToken(token, _id)
 
         if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
 
