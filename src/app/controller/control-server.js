@@ -70,6 +70,8 @@ export default function ServerControl() {
 
     return {
         createServer,
-        listServers
+        listServers,
+        findLobby,
+        findById
     }
 }

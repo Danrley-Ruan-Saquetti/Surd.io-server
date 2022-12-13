@@ -6,9 +6,6 @@ const AdminSchema = mongoose.Schema({
         ref: "User",
         require: true
     },
-    admin: {
-
-    },
     createAt: {
         type: Date,
         default: Date.now,

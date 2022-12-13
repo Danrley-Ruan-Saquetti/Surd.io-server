@@ -1,10 +1,12 @@
 import bcryptjs from "bcryptjs"
 import crypto from "crypto"
 import UserDao from "../model/dao-user.js"
+import ServerControl from "./control-server.js"
 import { generatedToken, validToken } from "../util/token.service.js"
 
 export default function UserControl() {
     const userDao = UserDao()
+    const serverControl = ServerControl()
 
     const verifyValues = ({ username, email, password }) => {
         const error = []
@@ -94,12 +96,26 @@ export default function UserControl() {
 
         if (response.error) { return { error: { msg: "Cannot register user", system: true }, status: 400 } }
 
+        const responseLobby = await serverControl.findLobby()
+
+        let warning = null
+
+        let _idServer = null
+
+        if (!responseLobby.server) {
+            warning = { msg: "Cannot connected lobby", system: true }
+        } else {
+            const { server } = responseLobby
+            _idServer = server._id
+        }
+
         const { user } = response
 
         const token = generatedToken({ id: user })
 
         user.authToken = token
         user.online = true
+        user.idServerConnected = _idServer
 
         await user.save()
 
@@ -107,7 +123,7 @@ export default function UserControl() {
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
 
-        return { user, success: { msg: "User created successfully", system: true }, status: 200 }
+        return { user, success: { msg: "User created successfully", system: true }, warning, status: 200 }
     }
 
     const userLogin = async({ login = "", password = "" }) => {
@@ -130,10 +146,17 @@ export default function UserControl() {
 
         if (user.online) { return { error: { msg: "User already logged in this moment", system: true }, status: 401 } }
 
+        const responseLobby = await serverControl.findLobby()
+
+        if (!responseLobby.server) { return { error: { msg: "Cannot connect lobby, try again", system: true }, status: 401 } }
+
+        const { server } = responseLobby
+
         const token = generatedToken({ id: user })
 
         user.authToken = token
         user.online = true
+        user.idServerConnected = server._id
         user.lastTimeOnline = Date.now()
 
         await user.save()
@@ -158,6 +181,8 @@ export default function UserControl() {
 
         user.online = false
         user.lastTimeOnline = Date.now()
+        user.idServerConnected = null
+        user.authToken = null
 
         await user.save()
 
@@ -200,6 +225,30 @@ export default function UserControl() {
         await user.save()
 
         return { success: { msg: "Reset password successfully", system: true }, status: 200 }
+    }
+
+    const userConnectServer = async({ _id, _idUser, token }) => {
+        const authValid = await validToken(token, _idUser)
+
+        if (!authValid.valueOf) { return authValid }
+
+        const response = await findById({ _id: _idUser })
+
+        if (!response.user) { return { error: { msg: "User not found", system: true }, status: 400 } }
+
+        const { user } = response
+
+        const responseLobby = await serverControl.findById({ _id })
+
+        if (!responseLobby.server) { return { error: { msg: "Cannot connect lobby, try again", system: true }, status: 401 } }
+
+        const { server } = responseLobby
+
+        user.idServerConnected = server._id
+
+        await user.save()
+
+        return { success: { msg: "Server connected successfully", system: true }, status: 200 }
     }
 
     const selectUser = async({ _id, token }) => {
@@ -293,5 +342,6 @@ export default function UserControl() {
         selectUser,
         listUsers,
         EUserDisconnect,
+        userConnectServer,
     }
 }

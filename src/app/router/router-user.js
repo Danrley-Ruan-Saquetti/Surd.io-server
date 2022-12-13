@@ -126,4 +126,23 @@ router.post("/reset-password", async(req, res) => {
     }
 })
 
+router.post("/connect-server/:_id", async(req, res) => {
+    const { _id } = req.params
+    const { token } = req.headers
+    const { _idUser } = req.body
+
+    try {
+        const response = await userControl.userConnectServer({ _id, _idUser, token })
+
+        const { status } = response
+
+        response.status = undefined
+
+        return res.status(status).send(response)
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send({ error: { msg: "Cannot reset password", system: true } })
+    }
+})
+
 export default router

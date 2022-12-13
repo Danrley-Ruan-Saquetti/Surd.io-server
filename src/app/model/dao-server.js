@@ -42,7 +42,7 @@ export default function ServerDao() {
     }
 
     const findLobby = async() => {
-        const response = await Server.findOne({ lobby }).then(async(res) => {
+        const response = await Server.findOne({ lobby: true }).then(async(res) => {
             return { server: res }
         }).catch(res => {
             return { error: res }

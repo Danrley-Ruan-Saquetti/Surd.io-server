@@ -17,11 +17,11 @@ const UserSchema = mongoose.Schema({
         type: Boolean,
         require: true,
     },
-    // idServerConnected: {
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: "Server",
-    //     require: true
-    // },
+    idServerConnected: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Server",
+        default: null
+    },
     level: {
         type: Number,
         require: true
@@ -90,6 +90,7 @@ User.find().then(res => {
     res.forEach(user => {
         user.online = false
         user.authToken = null
+        user.idServerConnected = null
 
         user.save()
     })
