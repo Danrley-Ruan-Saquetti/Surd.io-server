@@ -3,10 +3,12 @@ import crypto from "crypto"
 import UserDao from "../model/dao-user.js"
 import ServerControl from "./control-server.js"
 import { generatedToken, validToken } from "../util/token.service.js"
+import AdminControl from "./control-admin.js"
 
 export default function UserControl() {
     const userDao = UserDao()
     const serverControl = ServerControl()
+    const adminControl = AdminControl()
 
     const verifyValues = ({ username, email, password }) => {
         const error = []
@@ -83,7 +85,7 @@ export default function UserControl() {
     }
 
     // Use Cases
-    const userRegister = async({ username = "", email = "", password = "" }) => {
+    const userRegister = async({ username = "", email = "", password = "", isAdmin = false, idAdmin = null, tokenAdmin = null }) => {
         const valuesVerified = verifyValues({ username, email, password })
 
         if (!valuesVerified.valueOf) { return { error: valuesVerified.error, status: 400 } }
@@ -96,27 +98,42 @@ export default function UserControl() {
 
         if (response.error) { return { error: { msg: "Cannot register user", system: true }, status: 400 } }
 
-        const responseLobby = await serverControl.findLobby()
+        const { user } = response
 
         let warning = null
 
-        let _idServer = null
+        if (isAdmin) {
+            const responseAdmin = await adminControl.createAdmin({ user, idAdmin, tokenAdmin })
 
-        if (!responseLobby.server) {
-            warning = { msg: "Cannot connected lobby", system: true }
+            if (!responseAdmin.valueOf) {
+                user.remove()
+
+                return responseAdmin
+            }
+
+            const { admin } = responseAdmin
+
+            console.log(responseAdmin);
+
+            user.idAdmin = admin._id
         } else {
-            const { server } = responseLobby
-            _idServer = server._id
+            const responseLobby = await serverControl.findLobby()
+
+            let _idServer = null
+
+            if (!responseLobby.server) {
+                warning = { msg: "Cannot connected lobby", system: true }
+            } else {
+                const { server } = responseLobby
+                _idServer = server._id
+            }
+
+            const token = generatedToken({ id: user, admin: isAdmin })
+
+            user.authToken = token
+            user.online = true
+            user.idServerConnected = _idServer
         }
-
-        const { user } = response
-
-        const token = generatedToken({ id: user })
-
-        user.authToken = token
-        user.online = true
-        user.idServerConnected = _idServer
-
         await user.save()
 
         user.password = undefined
@@ -152,7 +169,7 @@ export default function UserControl() {
 
         const { server } = responseLobby
 
-        const token = generatedToken({ id: user })
+        const token = generatedToken({ id: user, admin: user.idAdmin })
 
         user.authToken = token
         user.online = true
@@ -164,6 +181,10 @@ export default function UserControl() {
         user.password = undefined
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
+
+        if (!user.idAdmin) {
+            user.idAdmin = undefined
+        }
 
         return { user, success: { msg: "User logged successfully", system: true }, status: 200 }
     }
@@ -267,6 +288,10 @@ export default function UserControl() {
         user.passwordResetExpires = undefined
         user.authToken = undefined
 
+        if (!user.idAdmin) {
+            user.idAdmin = undefined
+        }
+
         return { user, status: 200 }
     }
 
@@ -286,6 +311,7 @@ export default function UserControl() {
             user.passwordResetToken = undefined
             user.passwordResetExpires = undefined
             user.authToken = undefined
+            user.idAdmin = undefined
         });
 
         return { users, status: 200 }
@@ -308,8 +334,8 @@ export default function UserControl() {
     }
 
     // DaoUser
-    const register = async({ username = "", email = "", password = "", online = false, idServerConnected = null, level = 0, xp = 0, xpUpLevel = 0, recordPoints = 0 }) => {
-        const response = await userDao.register({ username, email, password, online, idServerConnected, level, xp, xpUpLevel, recordPoints })
+    const register = async({ username = "", email = "", password = "", online = false, idServerConnected = null, level = 0, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null }) => {
+        const response = await userDao.register({ username, email, password, online, idServerConnected, level, xp, xpUpLevel, recordPoints, admin })
         return response
     }
 

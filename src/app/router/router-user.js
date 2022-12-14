@@ -40,10 +40,11 @@ router.get("/:_id", async(req, res) => {
 })
 
 router.post("/register", async(req, res) => {
-    const { username, email, password } = req.body
+    const { username, email, password, isAdmin } = req.body
+    const { id_admin, token_admin } = req.headers
 
     try {
-        const response = await userControl.userRegister({ username, email, password })
+        const response = await userControl.userRegister({ username, email, password, isAdmin, idAdmin: id_admin, tokenAdmin: token_admin })
 
         const { status } = response
 

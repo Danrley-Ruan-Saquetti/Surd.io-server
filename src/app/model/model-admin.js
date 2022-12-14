@@ -1,7 +1,7 @@
 import mongoose from "../../database/index.js"
 
 const AdminSchema = mongoose.Schema({
-    user: {
+    idUser: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         require: true

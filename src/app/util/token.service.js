@@ -3,14 +3,16 @@ import UserDao from "../model/dao-user.js"
 import dotenv from "dotenv"
 dotenv.config()
 
-export const generatedToken = ({ _id }) => {
-    return jwt.sign({ _id }, process.env.SERVER_HASH_SECRET, {
+const userDao = UserDao()
+
+export const generatedToken = ({ _id, admin = false }) => {
+    return jwt.sign({ _id }, process.env[!admin ? "SERVER_HASH_SECRET" : "ADMIN_HASH_SECRET"], {
         expiresIn: 86400,
     })
 }
 
 export const validAuth = async(token, _id) => {
-    const response = await UserDao().findById({ _id })
+    const response = await userDao.findById({ _id })
 
     if (!response.user) { return { error: { msg: "User not defined", system: true }, status: 400, valueOf: false } }
 
@@ -20,7 +22,7 @@ export const validAuth = async(token, _id) => {
 
     if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401, valueOf: false } }
 
-    return { error: null, valueOf: true, status: 200 }
+    return { user, error: null, valueOf: true, status: 200 }
 }
 
 export const validToken = async(t, _id) => {
@@ -40,7 +42,11 @@ export const validToken = async(t, _id) => {
 
     if (!authValid.valueOf) { return authValid }
 
-    return jwt.verify(token, process.env.SERVER_HASH_SECRET, (err, decoded) => {
+    const { user } = authValid
+
+    const hash = process.env[!user.idAdmin ? "SERVER_HASH_SECRET" : "ADMIN_HASH_SECRET"]
+
+    return jwt.verify(token, hash, (err, decoded) => {
         if (err) { return { error: { msg: "Token invalid", system: true }, valueOf: false, status: 401 } }
 
         return { error: null, valueOf: true, status: 200 }

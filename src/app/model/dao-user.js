@@ -1,8 +1,8 @@
 import User from "./model-user.js"
 
 export default function UserDao() {
-    const register = async({ username = "", email = "", password = "", online = false, idServerConnected = null, level = 0, xp = 0, xpUpLevel = 0, recordPoints = 0 }) => {
-        const response = await User.create({ username, email, password, online, level, xp, xpUpLevel, recordPoints, idServerConnected }).then(async(res) => {
+    const register = async({ username = "", email = "", password = "", online = false, idServerConnected = null, level = 0, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null }) => {
+        const response = await User.create({ username, email, password, online, level, xp, xpUpLevel, recordPoints, idServerConnected, admin }).then(async(res) => {
             return { user: res }
         }).catch(res => {
             return { error: res }

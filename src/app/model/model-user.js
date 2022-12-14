@@ -1,6 +1,11 @@
 import mongoose from "../../database/index.js"
 
 const UserSchema = mongoose.Schema({
+    idAdmin: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Admin",
+        default: null
+    },
     username: {
         type: String,
         require: true
