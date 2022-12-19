@@ -5,10 +5,10 @@ const router = Router()
 const userControl = UserControl()
 
 router.get("/", async(req, res) => {
-    const { token, _id } = req.headers
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await userControl.listUsers({ token, _id })
+        const response = await userControl.listUsers({ token, idSocket: id_socket })
 
         const { status } = response
 
@@ -41,10 +41,10 @@ router.get("/:_id", async(req, res) => {
 
 router.post("/register", async(req, res) => {
     const { username, email, password, isAdmin } = req.body
-    const { id_admin, token_admin } = req.headers
+    const { id_admin, token_admin, id_socket } = req.headers
 
     try {
-        const response = await userControl.userRegister({ username, email, password, isAdmin, idAdmin: id_admin, tokenAdmin: token_admin })
+        const response = await userControl.userRegister({ username, email, password, isAdmin, idAdmin: id_admin, tokenAdmin: token_admin, idSocket: id_socket })
 
         const { status } = response
 
@@ -59,9 +59,10 @@ router.post("/register", async(req, res) => {
 
 router.post("/login", async(req, res) => {
     const { login, password } = req.body
+    const { id_socket } = req.headers
 
     try {
-        const response = await userControl.userLogin({ login, password })
+        const response = await userControl.userLogin({ login, password, idSocket: id_socket })
 
         const { status } = response
 
@@ -76,10 +77,28 @@ router.post("/login", async(req, res) => {
 
 router.post("/logout/:_id", async(req, res) => {
     const { _id } = req.params
-    const { token } = req.headers
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await userControl.userLogout({ _id, token })
+        const response = await userControl.userLogout({ _id, token, idSocket: id_socket })
+
+        const { status } = response
+
+        response.status = undefined
+
+        return res.status(status).send(response)
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send({ error: { msg: "Cannot logout user", system: true } })
+    }
+})
+
+router.post("/remove/:_id", async(req, res) => {
+    const { _id } = req.params
+    const { token, id_socket } = req.headers
+
+    try {
+        const response = await userControl.userRemove({ _id, token, idSocket: id_socket })
 
         const { status } = response
 
@@ -130,10 +149,9 @@ router.post("/reset-password", async(req, res) => {
 router.post("/connect-server/:_id", async(req, res) => {
     const { _id } = req.params
     const { token } = req.headers
-    const { _idUser } = req.body
 
     try {
-        const response = await userControl.userConnectServer({ _id, _idUser, token })
+        const response = await userControl.userConnectServer({ _id, token })
 
         const { status } = response
 

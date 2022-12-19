@@ -6,15 +6,15 @@ dotenv.config()
 const userDao = UserDao()
 
 export const generatedToken = ({ _id, admin = false }) => {
-    return jwt.sign({ _id }, process.env[!admin ? "SERVER_HASH_SECRET" : "ADMIN_HASH_SECRET"], {
+    return jwt.sign({ id: _id }, process.env[!admin ? "SERVER_HASH_SECRET" : "ADMIN_HASH_SECRET"], {
         expiresIn: 86400,
     })
 }
 
-export const validAuth = async(token, _id) => {
-    const response = await userDao.findById({ _id })
+export const validAuth = async(token, idSocket) => {
+    const response = await userDao.findByIdSocket({ idSocket })
 
-    if (!response.user) { return { error: { msg: "User not defined", system: true }, status: 400, valueOf: false } }
+    if (!response.user) { return { error: { msg: "Host not defined", system: true }, status: 400, valueOf: false } }
 
     const { user } = response
 
@@ -25,7 +25,7 @@ export const validAuth = async(token, _id) => {
     return { user, error: null, valueOf: true, status: 200 }
 }
 
-export const validToken = async(t, _id) => {
+export const validToken = async(t, idSocket) => {
     const authHeader = t
 
     if (!authHeader) { return { error: { msg: "No token provided", system: true }, valueOf: false, status: 401 } }
@@ -38,17 +38,17 @@ export const validToken = async(t, _id) => {
 
     if (!/^Bearer$/i.test(scheme)) { return { error: { msg: "Token malformatted", system: true }, valueOf: false, status: 401 } }
 
-    const authValid = await validAuth(token, _id)
+    const authValid = await validAuth(token, idSocket)
 
     if (!authValid.valueOf) { return authValid }
 
     const { user } = authValid
 
-    const hash = process.env[!user.idAdmin ? "SERVER_HASH_SECRET" : "ADMIN_HASH_SECRET"]
+    const secretHash = process.env[!user.idAdmin ? "SERVER_HASH_SECRET" : "ADMIN_HASH_SECRET"]
 
-    return jwt.verify(token, hash, (err, decoded) => {
+    return jwt.verify(token, secretHash, (err, decoded) => {
         if (err) { return { error: { msg: "Token invalid", system: true }, valueOf: false, status: 401 } }
 
-        return { error: null, valueOf: true, status: 200 }
+        return { user, error: null, valueOf: true, status: 200 }
     })
 }

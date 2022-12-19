@@ -6,6 +6,10 @@ const UserSchema = mongoose.Schema({
         ref: "Admin",
         default: null
     },
+    idSocket: {
+        type: String,
+        default: null
+    },
     username: {
         type: String,
         require: true
@@ -96,6 +100,7 @@ User.find().then(res => {
         user.online = false
         user.authToken = null
         user.idServerConnected = null
+        user.idSocket = null
 
         user.save()
     })

@@ -85,7 +85,11 @@ export default function UserControl() {
     }
 
     // Use Cases
-    const userRegister = async({ username = "", email = "", password = "", isAdmin = false, idAdmin = null, tokenAdmin = null }) => {
+    const userRegister = async({ username = "", email = "", password = "", isAdmin = false, idAdmin = null, tokenAdmin = null, idSocket }) => {
+        const responseSocket = await findByIdSocket({ idSocket })
+
+        if (responseSocket.user) { return { error: { msg: "Host already connected", system: true }, status: 401 } }
+
         const valuesVerified = verifyValues({ username, email, password })
 
         if (!valuesVerified.valueOf) { return { error: valuesVerified.error, status: 400 } }
@@ -94,7 +98,7 @@ export default function UserControl() {
 
         if (!valuesAlreadyExistsVerified.valueOf) { return { error: valuesAlreadyExistsVerified.error, status: 400 } }
 
-        const response = await register({ username, email, password: await bcryptjs.hash(password, 5) })
+        const response = await register({ username, email, password: await bcryptjs.hash(password, 5), idSocket })
 
         if (response.error) { return { error: { msg: "Cannot register user", system: true }, status: 400 } }
 
@@ -134,16 +138,19 @@ export default function UserControl() {
             user.online = true
             user.idServerConnected = _idServer
         }
+
         await user.save()
 
         user.password = undefined
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
+        user.idSocket = undefined
+        user.idServerConnected = undefined
 
         return { user, success: { msg: "User created successfully", system: true }, warning, status: 200 }
     }
 
-    const userLogin = async({ login = "", password = "" }) => {
+    const userLogin = async({ login = "", password = "", idSocket }) => {
         if (!login) {
             return { error: { msg: "Inform the e-mail or username", login: true }, status: 400 }
         } else {
@@ -154,6 +161,10 @@ export default function UserControl() {
         if (!password) {
             return { error: { msg: "Inform the password", password: true }, status: 400 }
         }
+
+        const responseSocket = await findByIdSocket({ idSocket })
+
+        if (responseSocket.user) { return { error: { msg: "Host already connected", system: true }, status: 401 } }
 
         const validAuth = await validAuthentication({ login, password })
 
@@ -174,6 +185,7 @@ export default function UserControl() {
         user.authToken = token
         user.online = true
         user.idServerConnected = server._id
+        user.idSocket = idSocket
         user.lastTimeOnline = Date.now()
 
         await user.save()
@@ -181,6 +193,8 @@ export default function UserControl() {
         user.password = undefined
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
+        user.idServerConnected = undefined
+        user.idSocket = undefined
 
         if (!user.idAdmin) {
             user.idAdmin = undefined
@@ -189,25 +203,34 @@ export default function UserControl() {
         return { user, success: { msg: "User logged successfully", system: true }, status: 200 }
     }
 
-    const userLogout = async({ _id, token }) => {
-        const authValid = await validToken(token, _id)
+    const userLogout = async({ token, idSocket }) => {
+        const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
 
-        const response = await findById({ _id })
-
-        if (!response.user) { return { error: { msg: "User not found", system: true }, status: 400 } }
-
-        const { user } = response
+        const { user } = authValid
 
         user.online = false
         user.lastTimeOnline = Date.now()
         user.idServerConnected = null
         user.authToken = null
+        user.idSocket = null
 
         await user.save()
 
         return { success: { msg: "User logged out successfully", system: true }, status: 200 }
+    }
+
+    const userRemove = async({ token, idSocket }) => {
+        const authValid = await validToken(token, idSocket)
+
+        if (!authValid.valueOf) { return authValid }
+
+        const { user } = authValid
+
+        await user.remove()
+
+        return { success: { msg: "User removed successfully", system: true }, status: 200 }
     }
 
     const userForgotPassword = async({ email }) => {
@@ -225,7 +248,7 @@ export default function UserControl() {
         user.passwordResetToken = token
         user.passwordResetExpires = now
 
-        user.save()
+        await user.save()
 
         return { status: 200, success: { msg: "Check your e-mail for reset password", system: true }, token }
     }
@@ -242,22 +265,22 @@ export default function UserControl() {
         if (new Date() > user.passwordResetExpires) { return { error: { msg: "TokToken expired, generated a new one", system: true }, status: 400 } }
 
         user.password = await bcryptjs.hash(password, 5)
+        user.passwordResetToken = null
+        user.passwordResetExpires = null
 
         await user.save()
 
         return { success: { msg: "Reset password successfully", system: true }, status: 200 }
     }
 
-    const userConnectServer = async({ _id, _idUser, token }) => {
-        const authValid = await validToken(token, _idUser)
+    const userConnectServer = async({ _id, token, idSocket }) => {
+        const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
 
-        const response = await findById({ _id: _idUser })
+        const { user } = authValid
 
-        if (!response.user) { return { error: { msg: "User not found", system: true }, status: 400 } }
-
-        const { user } = response
+        if (user.idSocket != idSocket) { return { error: { msg: "Host not connected", system: true }, status: 401 } }
 
         const responseServer = await serverControl.findById({ _id })
 
@@ -287,6 +310,7 @@ export default function UserControl() {
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
         user.authToken = undefined
+        user.idSocket = undefined
 
         if (!user.idAdmin) {
             user.idAdmin = undefined
@@ -295,12 +319,12 @@ export default function UserControl() {
         return { user, status: 200 }
     }
 
-    const listUsers = async({ _id, token }) => {
-        const tokenValid = await validToken(token, _id)
+    const listUsers = async({ idSocket, token }) => {
+        const tokenValid = await validToken(token, idSocket)
 
         if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
 
-        const response = await list()
+        const response = await listUsersOnline()
 
         if (response.error) { return { error: { msg: "Cannot get users", system: true }, status: 401 } }
 
@@ -312,6 +336,8 @@ export default function UserControl() {
             user.passwordResetExpires = undefined
             user.authToken = undefined
             user.idAdmin = undefined
+            user.email = undefined
+            user.idSocket = undefined
         });
 
         return { users, status: 200 }
@@ -334,8 +360,8 @@ export default function UserControl() {
     }
 
     // DaoUser
-    const register = async({ username = "", email = "", password = "", online = false, idServerConnected = null, level = 0, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null }) => {
-        const response = await userDao.register({ username, email, password, online, idServerConnected, level, xp, xpUpLevel, recordPoints, admin })
+    const register = async({ username = "", email = "", password = "", online = false, idServerConnected = null, level = 0, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null, idSocket = null }) => {
+        const response = await userDao.register({ username, email, password, online, idServerConnected, level, xp, xpUpLevel, recordPoints, admin, idSocket })
         return response
     }
 
@@ -349,6 +375,11 @@ export default function UserControl() {
         return response
     }
 
+    const findByIdSocket = async({ idSocket }) => {
+        const response = await userDao.findByIdSocket({ idSocket })
+        return response
+    }
+
     const findByUsername = async({ username }) => {
         const response = await userDao.findByUsername({ username })
         return response
@@ -359,10 +390,16 @@ export default function UserControl() {
         return response
     }
 
+    const listUsersOnline = async() => {
+        const response = await userDao.listUsersOnline()
+        return response
+    }
+
     return {
         userRegister,
         userLogin,
         userLogout,
+        userRemove,
         userForgotPassword,
         userResetPassword,
         selectUser,

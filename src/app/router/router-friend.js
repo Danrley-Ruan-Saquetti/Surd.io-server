@@ -4,12 +4,11 @@ import FriendControl from "../controller/control-friend.js"
 const router = Router()
 const friendControl = FriendControl()
 
-router.get("/:_id", async(req, res) => {
-    const { token } = req.headers
-    const { _id } = req.params
+router.get("/", async(req, res) => {
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await friendControl.listFriendsById({ _id, token })
+        const response = await friendControl.listFriendsById({ idSocket: id_socket, token })
 
         const { status } = response
 
@@ -23,11 +22,11 @@ router.get("/:_id", async(req, res) => {
 })
 
 router.post("/send-invite", async(req, res) => {
-    const { users, from, to } = req.body
-    const { token } = req.headers
+    const { to } = req.body
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await friendControl.sendInviteFriendship({ users, from, to, token })
+        const response = await friendControl.sendInviteFriendship({ idSocket: id_socket, to, token })
 
         const { status } = response
 
@@ -42,11 +41,10 @@ router.post("/send-invite", async(req, res) => {
 
 router.post("/accept-invite/:_id", async(req, res) => {
     const { _id } = req.params
-    const { token } = req.headers
-    const { recipient } = req.body
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await friendControl.acceptInviteFriendship({ _id, token, recipient })
+        const response = await friendControl.acceptInviteFriendship({ _id, token, idSocket: id_socket })
 
         const { status } = response
 
@@ -61,11 +59,10 @@ router.post("/accept-invite/:_id", async(req, res) => {
 
 router.post("/denied-invite/:_id", async(req, res) => {
     const { _id } = req.params
-    const { token } = req.headers
-    const { recipient } = req.body
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await friendControl.deniedInviteFriendship({ _id, token, recipient })
+        const response = await friendControl.deniedInviteFriendship({ _id, token, idSocket: id_socket })
 
         const { status } = response
 
@@ -80,11 +77,10 @@ router.post("/denied-invite/:_id", async(req, res) => {
 
 router.delete("/cancel-invite/:_id", async(req, res) => {
     const { _id } = req.params
-    const { token } = req.headers
-    const { _idUser } = req.body
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await friendControl.cancelInvite({ _idUser, _id, token })
+        const response = await friendControl.cancelInvite({ _id, idSocket: id_socket, token })
 
         const { status } = response
 
@@ -98,12 +94,11 @@ router.delete("/cancel-invite/:_id", async(req, res) => {
 })
 
 router.delete("/remove-friendship/:_id", async(req, res) => {
-    const { token } = req.headers
     const { _id } = req.params
-    const { _idUser } = req.body
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await friendControl.removeFriendship({ _id, _idUser, token })
+        const response = await friendControl.removeFriendship({ _id, idSocket: id_socket, token })
 
         const { status } = response
 
@@ -116,12 +111,11 @@ router.delete("/remove-friendship/:_id", async(req, res) => {
     }
 })
 
-router.get("/pending/on-hold/:_id", async(req, res) => {
-    const { token } = req.headers
-    const { _id } = req.params
+router.get("/pending/on-hold", async(req, res) => {
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await friendControl.listInvitesPendingOnHold({ _id, token })
+        const response = await friendControl.listInvitesPendingOnHold({ idSocket: id_socket, token })
 
         const { status } = response
 
@@ -134,12 +128,11 @@ router.get("/pending/on-hold/:_id", async(req, res) => {
     }
 })
 
-router.get("/pending/awaiting/:_id", async(req, res) => {
-    const { token } = req.headers
-    const { _id } = req.params
+router.get("/pending/awaiting", async(req, res) => {
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await friendControl.listInvitesPendingAwaiting({ _id, token })
+        const response = await friendControl.listInvitesPendingAwaiting({ idSocket: id_socket, token })
 
         const { status } = response
 
@@ -152,12 +145,11 @@ router.get("/pending/awaiting/:_id", async(req, res) => {
     }
 })
 
-router.get("/denied/:_id", async(req, res) => {
-    const { token } = req.headers
-    const { _id } = req.params
+router.get("/denied", async(req, res) => {
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await friendControl.listInvitesDeniedByUser({ _id, token })
+        const response = await friendControl.listInvitesDeniedByUser({ idSocket: id_socket, token })
 
         const { status } = response
 
