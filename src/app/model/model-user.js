@@ -95,15 +95,4 @@ const UserSchema = mongoose.Schema({
 
 const User = mongoose.model("User", UserSchema)
 
-User.find().then(res => {
-    res.forEach(user => {
-        user.online = false
-        user.authToken = null
-        user.idServerConnected = null
-        user.idSocket = null
-
-        user.save()
-    })
-})
-
 export default User

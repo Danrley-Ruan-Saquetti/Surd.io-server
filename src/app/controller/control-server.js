@@ -31,8 +31,8 @@ export default function ServerControl() {
         return { success: { msg: "Server created successfully", system: true }, status: 200 }
     }
 
-    const listServers = async({ token, _id }) => {
-        const authValid = await validToken(token, _id)
+    const listServers = async({ token, idSocket }) => {
+        const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
 

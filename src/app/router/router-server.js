@@ -5,11 +5,10 @@ const router = Router()
 const serverControl = ServerControl()
 
 router.get("/", async(req, res) => {
-    const { token } = req.headers
-    const { _id } = req.body
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await serverControl.listServers({ token, _id })
+        const response = await serverControl.listServers({ token, idSocket: id_socket })
 
         const { status } = response
 

@@ -4,6 +4,7 @@ import bodyParser from "body-parser"
 import userRouter from "./router/router-user.js"
 import friendRouter from "./router/router-friend.js"
 import serverRouter from "./router/router-server.js"
+import Data from "./data/data.js"
 
 const app = express()
 
@@ -14,5 +15,7 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use("/users", userRouter)
 app.use("/servers", serverRouter)
 app.use("/friends", friendRouter)
+
+Data()
 
 export default app
