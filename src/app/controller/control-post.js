@@ -112,5 +112,6 @@ export default function PostControl() {
         systemSendPost,
         userSendPost,
         listPosts,
+        findPostsByIdChat,
     }
 }

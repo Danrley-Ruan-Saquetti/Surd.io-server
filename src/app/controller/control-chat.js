@@ -1,9 +1,11 @@
 import ChatDao from "../model/dao-chat.js"
 import ServerDao from "../model/dao-server.js"
+import PostControl from "../controller/control-post.js"
 
 export default function ChatControl() {
     const chatDao = ChatDao()
     const serverDao = ServerDao()
+    const postControl = PostControl()
 
     // Use Cases
     const createChat = async({ idServer = null, isServer = false, users = null }) => {
@@ -21,9 +23,19 @@ export default function ChatControl() {
 
         const { chat } = responseChat
 
+        const responsePost = await postControl.findPostsByIdChat({ chat: chat._id })
+
+        if (responseChat.error) { return { error: { msg: "Cannot delete posts", system: true }, status: 401, valueOf: false } }
+
+        const { posts } = responsePost
+
+        for (let i = 0; i < posts.length; i++) {
+            await posts[i].remove()
+        }
+
         await chat.remove()
 
-        return { success: { msg: "Chat removed successfully", system: true }, status: 200, valueOf: false }
+        return { success: { msg: "Chat removed successfully", system: true }, status: 200, valueOf: true }
     }
 
     const getChat = async({ _id }) => {
