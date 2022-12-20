@@ -1,3 +1,4 @@
+import { RULES_POST } from "../business-rule/rules.js"
 import Post from "./model-post.js"
 
 export default function PostDao() {
@@ -22,7 +23,7 @@ export default function PostDao() {
     }
 
     const listByChat = async({ chat }) => {
-        const response = await Post.find({ chat }).limit(5).then(async(res) => {
+        const response = await Post.find({ chat }).limit(RULES_POST.LIMIT_LIST).then(async(res) => {
             return { posts: res }
         }).catch(res => {
             return { error: res }

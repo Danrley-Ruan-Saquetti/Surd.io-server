@@ -48,5 +48,5 @@ export default async function Data() {
 
     serverData()
     userData()
-    postData()
+        // postData()
 }

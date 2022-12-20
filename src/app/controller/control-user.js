@@ -5,36 +5,13 @@ import ServerControl from "./control-server.js"
 import { generatedToken, validToken } from "../util/token.service.js"
 import AdminControl from "./control-admin.js"
 import PostControl from "./control-post.js"
+import { RULES_USER } from "../business-rule/rules.js"
 
 export default function UserControl() {
     const userDao = UserDao()
     const serverControl = ServerControl()
     const adminControl = AdminControl()
     const postControl = PostControl()
-
-    const verifyValues = ({ username, email, password }) => {
-        const error = []
-
-        if (!username) {
-            error.push({ msg: "Inform the username", username: true })
-        } else {
-            if (username.split(" ").length > 1) {
-                error.push({ msg: "Username incorrect", username: true })
-            }
-        }
-        if (!email) {
-            error.push({ msg: "Inform the e-mail", email: true })
-        } else {
-            if (email.split(" ").length > 1) {
-                error.push({ msg: "E-mail incorrect", email: true })
-            }
-        }
-        if (!password) {
-            error.push({ msg: "Inform the password", password: true })
-        }
-
-        return { error, valueOf: error.length == 0 }
-    }
 
     const verifyValuesAlreadyExists = async({ username, email, _id = null }) => {
         const error = []
@@ -92,7 +69,7 @@ export default function UserControl() {
 
         if (responseSocket.user) { return { error: { msg: "Host already connected", system: true }, status: 401 } }
 
-        const valuesVerified = verifyValues({ username, email, password })
+        const valuesVerified = RULES_USER.VALID_REGISTER({ username, email, password })
 
         if (!valuesVerified.valueOf) { return { error: valuesVerified.error, status: 400 } }
 
