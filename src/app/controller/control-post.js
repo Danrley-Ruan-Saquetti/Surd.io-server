@@ -8,12 +8,12 @@ export default function PostControl() {
     const chatDao = ChatDao()
     const userDao = UserDao()
 
-    const register = async({ body = "", idServer = null, user = null, info = false }) => {
+    const register = async({ body = "", isServer = false, idChat = null, idServer = null, user = null, info = false }) => {
         if (!body) { return { error: { msg: "Inform the body of post", body: true }, status: 400 } }
 
-        const responseChat = await chatDao.findByServer({ idServer })
+        const responseChat = !isServer ? await chatDao.findById({ _id: idChat }) : await chatDao.findByServer({ idServer })
 
-        if (responseChat.error) { return { error: { msg: "Server not found", system: true }, status: 401 } }
+        if (!responseChat.chat) { return { error: { msg: "Chat not found", system: true }, status: 401 } }
 
         const { chat } = responseChat
 
@@ -26,33 +26,33 @@ export default function PostControl() {
         return { post, status: 200 }
     }
 
-    const systemSendPost = async({ body = "", idServer = null }) => {
-        const response = await register({ body, idServer, info: true })
+    const systemSendPost = async({ body = "", idChat = null, idServer = null }) => {
+        const response = await register({ body, idChat, isServer: idChat == null, idServer, info: true })
 
         return response
     }
 
     // Use Cases
-    const userSendPost = async({ body = "", idSocket = null, token }) => {
+    const userSendPost = async({ body = "", idChat = null, idSocket = null, token }) => {
         const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
 
         const { user } = authValid
 
-        const response = await register({ body, idServer: user.serverConnected, user: user._id })
+        const response = await register({ body, idServer: user.serverConnected, user: user._id, idChat, isServer: idChat == null })
 
         return response
     }
 
-    const listPosts = async({ idSocket, token }) => {
+    const listPosts = async({ idChat = null, idSocket, token }) => {
         const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
 
         const { user } = authValid
 
-        const responseChat = await findPostsByIdServer({ idServer: user.serverConnected })
+        const responseChat = !idChat ? await findPostsByIdServer({ idServer: user.serverConnected }) : await findPostsByIdChat({ chat: idChat })
 
         if (responseChat.error) { return { error: { msg: "Cannot get posts", system: true }, status: 401 } }
 
@@ -98,6 +98,12 @@ export default function PostControl() {
         const { chat } = responseChat
 
         const response = await postDao.listByChat({ chat: chat._id })
+
+        return response
+    }
+
+    const findPostsByIdChat = async({ chat }) => {
+        const response = await postDao.listByChat({ chat })
 
         return response
     }

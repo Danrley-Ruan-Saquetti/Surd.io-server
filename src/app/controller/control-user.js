@@ -167,7 +167,7 @@ export default function UserControl() {
         user.idSocket = idSocket
         user.lastTimeOnline = Date.now()
 
-        postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: user.serverConnected })
+        const responsePost = await postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: user.serverConnected })
 
         await user.save()
 

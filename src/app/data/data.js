@@ -19,7 +19,7 @@ export default async function Data() {
 
             const responseRegisterServer = await serverDao.register(s)
 
-            const responseRegisterChat = await chatDao.register({ idServer: responseRegisterServer.server._id })
+            const responseRegisterChat = await chatDao.register({ idServer: responseRegisterServer.server._id, isServer: true })
         })
     }
 

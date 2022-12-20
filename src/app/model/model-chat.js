@@ -4,8 +4,17 @@ const ChatSchema = mongoose.Schema({
     idServer: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Server",
-        require: true
+        default: null
     },
+    isServer: {
+        type: Boolean,
+        default: true
+    },
+    users: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null
+    }],
     createAt: {
         type: Date,
         default: Date.now

@@ -22,8 +22,12 @@ export default function PostDao() {
         return response
     }
 
-    const listByChat = async({ chat }) => {
-        const response = await Post.find({ chat }).limit(RULES_POST.LIMIT_LIST).then(async(res) => {
+    const listByChat = async({ chat, isPrivate = false }) => {
+        const response = !isPrivate ? await Post.find({ chat }).limit(RULES_POST.LIMIT_LIST).then(async(res) => {
+            return { posts: res }
+        }).catch(res => {
+            return { error: res }
+        }) : await Post.find({ chat }).then(async(res) => {
             return { posts: res }
         }).catch(res => {
             return { error: res }

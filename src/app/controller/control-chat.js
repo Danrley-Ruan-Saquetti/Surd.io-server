@@ -6,12 +6,24 @@ export default function ChatControl() {
     const serverDao = ServerDao()
 
     // Use Cases
-    const createChat = async({ server }) => {
-        const response = await register({ server })
+    const createChat = async({ idServer = null, isServer = false, users = null }) => {
+        const response = await register({ idServer, isServer, users })
 
         if (response.error) { return { error: { msg: "Cannot create server", system: true }, status: 400, valueOf: false } }
 
         return { success: { msg: "Chat created successfully", system: true }, status: 200, valueOf: true }
+    }
+
+    const removePrivateChat = async({ users }) => {
+        const responseChat = await findByUsers({ users })
+
+        if (responseChat.error) { return { error: { msg: "Chat not found", system: true }, status: 401 } }
+
+        const { chat } = responseChat
+
+        await chat.remove()
+
+        return { success: { msg: "Chat removed successfully", system: true }, status: 200, valueOf: false }
     }
 
     const getChat = async({ _id }) => {
@@ -34,9 +46,19 @@ export default function ChatControl() {
         return { chat, status: 200 }
     }
 
+    const getChatByUser = async({ user }) => {
+        const response = await findByUser({ user })
+
+        if (!response.chat) { return { error: { msg: "Chat not found", system: true }, status: 401 } }
+
+        const { chat } = response
+
+        return { chat, status: 200 }
+    }
+
     // Dao
-    const register = async({ server = null }) => {
-        const response = await chatDao.register({ server })
+    const register = async({ idServer = null, isServer = false, users = null }) => {
+        const response = await chatDao.register({ idServer, isServer, users })
 
         return response
     }
@@ -53,9 +75,23 @@ export default function ChatControl() {
         return response
     }
 
+    const findByUser = async({ user }) => {
+        const response = await chatDao.findByUser({ user })
+
+        return response
+    }
+
+    const findByUsers = async({ users }) => {
+        const response = await chatDao.findByUsers({ users })
+
+        return response
+    }
+
     return {
         createChat,
+        removePrivateChat,
         getChat,
         getChatByServer,
+        getChatByUser,
     }
 }

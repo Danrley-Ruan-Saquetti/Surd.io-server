@@ -20,7 +20,7 @@ export default function ServerControl() {
 
         const { server } = response
 
-        const responseChat = await chatControl.createChat({ idServer: server._id })
+        const responseChat = await chatControl.createChat({ idServer: server._id, isServer: true })
 
         if (!responseChat.valueOf) {
             await server.remove()

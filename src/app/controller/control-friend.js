@@ -1,10 +1,12 @@
 import FriendDao from "../model/dao-friend.js"
 import UserDao from "../model/dao-user.js"
 import { validToken } from "../util/token.service.js"
+import ChatControl from "./control-chat.js"
 
 export default function FriendControl() {
     const friendDao = FriendDao()
     const userDao = UserDao()
+    const chatControl = ChatControl()
 
     // Use Cases
     const sendInviteFriendship = async({ idSocket, to, token }) => {
@@ -49,7 +51,7 @@ export default function FriendControl() {
             user.idAdmin = undefined
         }
 
-        responseFriendship.friendship && responseFriendship.friendship.remove()
+        responseFriendship.friendship && await responseFriendship.friendship.remove()
 
         return { invite: { user, _id: invite._id }, success: { msg: "Send invite friendship successfully", system: true }, status: 200 }
     }
@@ -71,10 +73,14 @@ export default function FriendControl() {
 
         if (!friendship.pending) { return { error: { msg: `Invite already ${friendship.accepted ? "accepted" : "denied"}`, system: true }, status: 401 } }
 
+        const responseChat = await chatControl.createChat({ users: [friendship.to, friendship.from] })
+
+        if (responseChat.error) { return { error: { msg: "Cannot accept invite", system: true }, status: 401 } }
+
         friendship.pending = false
         friendship.accepted = true
 
-        friendship.save()
+        await friendship.save()
 
         return { success: { msg: "Accept invite successfully", system: true }, status: 200 }
     }
@@ -90,7 +96,11 @@ export default function FriendControl() {
 
         const { friendship } = response
 
-        friendship.remove()
+        const responseChat = await chatControl.removePrivateChat({ users: [friendship.to, friendship.from] })
+
+        if (responseChat.error) { return { error: { msg: "Cannot removed friendship", system: true }, status: 401 } }
+
+        await friendship.remove()
 
         return { success: { msg: "Friendship removed successfully", system: true }, status: 200 }
     }
@@ -112,7 +122,7 @@ export default function FriendControl() {
 
         if (!friendship.pending && friendship.accepted) { return { error: { msg: "Cannot cancel invite", system: true }, status: 401 } }
 
-        friendship.remove()
+        await friendship.remove()
 
         return { success: { msg: "Invite canceled successfully", system: true }, status: 200 }
     }
@@ -137,7 +147,7 @@ export default function FriendControl() {
         friendship.pending = false
         friendship.accepted = false
 
-        friendship.save()
+        await friendship.save()
 
         return { success: { msg: "Denied invite successfully", system: true }, status: 200 }
     }
@@ -192,8 +202,6 @@ export default function FriendControl() {
         const { invites } = response
 
         const users = []
-
-        console.log(invites);
 
         for (let i = 0; i < invites.length; i++) {
             const f = invites[i];
