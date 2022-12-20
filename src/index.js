@@ -6,5 +6,5 @@ dotenv.config()
 const PORT = process.env.PORT || 8000
 
 server.listen(PORT, () => {
-    console.log(`[HTTP] Server running on port ${PORT}`)
+    console.log(`[HTTP] Server running on local: ${process.env.URL_SERVER}`)
 })

@@ -13,8 +13,27 @@ const postControl = PostControl()
 const friendControl = FriendControl()
 const adminControl = AdminControl()
 
+let a = 0
 io.on("connection", (socket) => {
     const idSocket = socket.id
+
+    socket.join(`${a}`)
+
+    console.log(socket.rooms);
+
+    io.to(`${a}`).emit("hello", "User " + idSocket + " connected in room " + a)
+
+    socket.leave(`${a}`)
+
+    a++
+
+    if (a % 3 == 0) { a = 0 }
+
+    socket.join(`${a}`)
+
+    console.log(socket.rooms);
+
+    io.to(`${a}`).emit("hello", "User " + idSocket + " connected in room " + a)
 
     const socketEmit = ({ ev = "", data = {} }) => {
         socket.emit(`${ev}`, data)
