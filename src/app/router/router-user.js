@@ -148,10 +148,10 @@ router.post("/reset-password", async(req, res) => {
 
 router.post("/connect-server/:_id", async(req, res) => {
     const { _id } = req.params
-    const { token } = req.headers
+    const { token, id_socket } = req.headers
 
     try {
-        const response = await userControl.userConnectServer({ _id, token })
+        const response = await userControl.userConnectServer({ _id, token, idSocket: id_socket })
 
         const { status } = response
 
