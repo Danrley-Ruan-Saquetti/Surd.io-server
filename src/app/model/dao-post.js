@@ -22,7 +22,7 @@ export default function PostDao() {
     }
 
     const listByChat = async({ chat }) => {
-        const response = await Post.find({ chat }).then(async(res) => {
+        const response = await Post.find({ chat }).limit(5).then(async(res) => {
             return { posts: res }
         }).catch(res => {
             return { error: res }

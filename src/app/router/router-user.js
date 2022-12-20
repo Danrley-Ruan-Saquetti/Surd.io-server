@@ -21,12 +21,11 @@ router.get("/", async(req, res) => {
     }
 })
 
-router.get("/:_id", async(req, res) => {
-    const { _id } = req.params
-    const { token } = req.headers
+router.get("/select", async(req, res) => {
+    const { token, idSocket } = req.headers
 
     try {
-        const response = await userControl.selectUser({ _id, token })
+        const response = await userControl.selectUser({ idSocket, token })
 
         const { status } = response
 
@@ -36,6 +35,24 @@ router.get("/:_id", async(req, res) => {
     } catch (err) {
         console.log(err);
         return res.status(500).send({ error: { msg: "Cannot select user", system: true } })
+    }
+})
+
+router.get("/query/:username", async(req, res) => {
+    const { username } = req.params
+    const { token, id_socket } = req.headers
+
+    try {
+        const response = await userControl.queryUser({ idSocket: id_socket, username, token })
+
+        const { status } = response
+
+        response.status = undefined
+
+        return res.status(status).send(response)
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send({ error: { msg: "Cannot query user", system: true } })
     }
 })
 

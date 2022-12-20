@@ -8,10 +8,16 @@ export default function PostControl() {
     const chatDao = ChatDao()
     const userDao = UserDao()
 
-    const register = async({ body = "", chat = null, user = null, info = false }) => {
+    const register = async({ body = "", idServer = null, user = null, info = false }) => {
         if (!body) { return { error: { msg: "Inform the body of post", body: true }, status: 400 } }
 
-        const response = await registerPost({ body, user, info, chat })
+        const responseChat = await chatDao.findByServer({ idServer })
+
+        if (responseChat.error) { return { error: { msg: "Server not found", system: true }, status: 401 } }
+
+        const { chat } = responseChat
+
+        const response = await registerPost({ body, user, info, chat: chat._id })
 
         if (response.error) { return { error: { msg: "Cannot send Post", system: true }, status: 401 } }
 
@@ -20,12 +26,8 @@ export default function PostControl() {
         return { post, status: 200 }
     }
 
-    const systemSendPost = async(body = "", chat = null) => {
-        const authValid = await validToken(token, idSocket)
-
-        if (!authValid.valueOf) { return authValid }
-
-        const response = await register({ body, chat, info: true })
+    const systemSendPost = async({ body = "", idServer = null }) => {
+        const response = await register({ body, idServer, info: true })
 
         return response
     }
@@ -38,13 +40,7 @@ export default function PostControl() {
 
         const { user } = authValid
 
-        const responseChat = await chatDao.findByServer({ idServer: user.serverConnected })
-
-        if (responseChat.error) { return { error: { msg: "Server not found", system: true }, status: 401 } }
-
-        const { chat } = responseChat
-
-        const response = await register({ body, chat: chat._id, user: user._id })
+        const response = await register({ body, idServer: user.serverConnected, user: user._id })
 
         return response
     }
@@ -63,6 +59,8 @@ export default function PostControl() {
         const { posts } = responseChat
 
         for (let i = 0; i < posts.length; i++) {
+            if (!posts[i].user) { continue }
+
             const responseUser = await userDao.findById({ _id: posts[i].user })
 
             const { user } = responseUser

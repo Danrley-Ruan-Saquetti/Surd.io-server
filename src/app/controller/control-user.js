@@ -4,11 +4,13 @@ import UserDao from "../model/dao-user.js"
 import ServerControl from "./control-server.js"
 import { generatedToken, validToken } from "../util/token.service.js"
 import AdminControl from "./control-admin.js"
+import PostControl from "./control-post.js"
 
 export default function UserControl() {
     const userDao = UserDao()
     const serverControl = ServerControl()
     const adminControl = AdminControl()
+    const postControl = PostControl()
 
     const verifyValues = ({ username, email, password }) => {
         const error = []
@@ -117,8 +119,6 @@ export default function UserControl() {
 
             const { admin } = responseAdmin
 
-            console.log(responseAdmin);
-
             user.idAdmin = admin._id
         } else {
             const responseLobby = await serverControl.findLobby()
@@ -137,6 +137,8 @@ export default function UserControl() {
             user.authToken = token
             user.online = true
             user.serverConnected = _idServer
+
+            postControl.systemSendPost({ body: `User ${username} connected`, idServer: user.serverConnected })
         }
 
         await user.save()
@@ -188,6 +190,8 @@ export default function UserControl() {
         user.idSocket = idSocket
         user.lastTimeOnline = Date.now()
 
+        postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: user.serverConnected })
+
         await user.save()
 
         user.password = undefined
@@ -209,6 +213,8 @@ export default function UserControl() {
         if (!authValid.valueOf) { return authValid }
 
         const { user } = authValid
+
+        postControl.systemSendPost({ body: `User ${username} disconnected`, idServer: user.serverConnected })
 
         user.online = false
         user.lastTimeOnline = Date.now()
@@ -290,21 +296,40 @@ export default function UserControl() {
 
         user.serverConnected = server._id
 
+        postControl.systemSendPost({ body: `User ${username} connected`, idServer: user.serverConnected })
+
         await user.save()
 
         return { success: { msg: "Server connected successfully", system: true }, status: 200 }
     }
 
-    const selectUser = async({ _id, token }) => {
-        const tokenValid = await validToken(token, _id)
+    const queryUser = async({ username = "", token, idSocket }) => {
+        const tokenValid = await validToken(token, idSocket)
 
         if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
 
-        const response = await findById({ _id })
+        const response = await findByUsername({ username })
 
-        if (!response.user) { return { error: { msg: "User not found", system: true }, status: 401 } }
+        if (response.error) { return { error: { msg: "User not found", username: true }, status: 400 } }
 
         const { user } = response
+
+        user.password = undefined
+        user.passwordResetToken = undefined
+        user.passwordResetExpires = undefined
+        user.authToken = undefined
+        user.idSocket = undefined
+        user.email = undefined
+
+        return { user, status: 200 }
+    }
+
+    const selectUser = async({ idSocket, token }) => {
+        const tokenValid = await validToken(token, idSocket)
+
+        if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
+
+        const { user } = tokenValid
 
         user.password = undefined
         user.passwordResetToken = undefined
@@ -344,8 +369,8 @@ export default function UserControl() {
     }
 
     // Events
-    const EUserDisconnect = async({ _id }) => {
-        const response = await findById({ _id })
+    const EUserDisconnect = async({ idSocket }) => {
+        const response = await findByIdSocket({ idSocket })
 
         if (response.error) { return { error: { msg: "User not found", system: true }, status: 400 } }
 
@@ -355,6 +380,8 @@ export default function UserControl() {
         user.lastTimeOnline = Date.now()
 
         await user.save()
+
+        postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
 
         return { status: 200 }
     }
@@ -403,6 +430,7 @@ export default function UserControl() {
         userForgotPassword,
         userResetPassword,
         selectUser,
+        queryUser,
         listUsers,
         EUserDisconnect,
         userConnectServer,

@@ -1,4 +1,5 @@
 import server from "./app/server/index.js"
+import "./app/io/events.js"
 import dotenv from "dotenv"
 dotenv.config()
 

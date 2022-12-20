@@ -39,12 +39,14 @@ export default async function Data() {
     }
 
     const postData = async() => {
-        await postDao.list().then(res => {
-            res.remove()
-        }).catch(err => console.log(err))
+        const response = await postDao.list()
+
+        response.posts.forEach((post) => {
+            post.remove()
+        })
     }
 
     serverData()
     userData()
-        // postData()
+    postData()
 }
