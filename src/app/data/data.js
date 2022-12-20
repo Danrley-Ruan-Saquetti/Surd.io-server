@@ -1,10 +1,12 @@
 import ServerDao from "../model/dao-server.js"
 import ChatDao from "../model/dao-chat.js"
 import UserDao from "../model/dao-user.js"
+import PostDao from "../model/dao-post.js"
 
 const serverDao = ServerDao()
 const chatDao = ChatDao()
 const userDao = UserDao()
+const postDao = PostDao()
 
 export default async function Data() {
     const servers = [{ name: "Server A", lobby: false }, { name: "Server B", lobby: false }, { name: "Server C", lobby: false }, { name: "Server D", lobby: false }, { name: "Server E", lobby: false }, { name: "Lobby", lobby: true }]
@@ -36,6 +38,13 @@ export default async function Data() {
         }).catch(err => console.log(err))
     }
 
+    const postData = async() => {
+        await postDao.list().then(res => {
+            res.remove()
+        }).catch(err => console.log(err))
+    }
+
     serverData()
     userData()
+        // postData()
 }

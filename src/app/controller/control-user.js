@@ -136,7 +136,7 @@ export default function UserControl() {
 
             user.authToken = token
             user.online = true
-            user.idServerConnected = _idServer
+            user.serverConnected = _idServer
         }
 
         await user.save()
@@ -145,7 +145,7 @@ export default function UserControl() {
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
         user.idSocket = undefined
-        user.idServerConnected = undefined
+        user.serverConnected = undefined
 
         return { user, success: { msg: "User created successfully", system: true }, warning, status: 200 }
     }
@@ -184,7 +184,7 @@ export default function UserControl() {
 
         user.authToken = token
         user.online = true
-        user.idServerConnected = server._id
+        user.serverConnected = server._id
         user.idSocket = idSocket
         user.lastTimeOnline = Date.now()
 
@@ -193,7 +193,7 @@ export default function UserControl() {
         user.password = undefined
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
-        user.idServerConnected = undefined
+        user.serverConnected = undefined
         user.idSocket = undefined
 
         if (!user.idAdmin) {
@@ -212,7 +212,7 @@ export default function UserControl() {
 
         user.online = false
         user.lastTimeOnline = Date.now()
-        user.idServerConnected = null
+        user.serverConnected = null
         user.authToken = null
         user.idSocket = null
 
@@ -288,7 +288,7 @@ export default function UserControl() {
 
         const { server } = responseServer
 
-        user.idServerConnected = server._id
+        user.serverConnected = server._id
 
         await user.save()
 
@@ -360,8 +360,8 @@ export default function UserControl() {
     }
 
     // DaoUser
-    const register = async({ username = "", email = "", password = "", online = false, idServerConnected = null, level = 0, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null, idSocket = null }) => {
-        const response = await userDao.register({ username, email, password, online, idServerConnected, level, xp, xpUpLevel, recordPoints, admin, idSocket })
+    const register = async({ username = "", email = "", password = "", online = false, serverConnected = null, level = 0, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null, idSocket = null }) => {
+        const response = await userDao.register({ username, email, password, online, serverConnected, level, xp, xpUpLevel, recordPoints, admin, idSocket })
         return response
     }
 

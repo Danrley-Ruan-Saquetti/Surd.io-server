@@ -6,8 +6,8 @@ export default function ChatControl() {
     const serverDao = ServerDao()
 
     // Use Cases
-    const createChat = async({ idServer }) => {
-        const response = await register({ idServer })
+    const createChat = async({ server }) => {
+        const response = await register({ server })
 
         if (response.error) { return { error: { msg: "Cannot create server", system: true }, status: 400, valueOf: false } }
 
@@ -24,8 +24,8 @@ export default function ChatControl() {
         return { chat, status: 200 }
     }
 
-    const getChatByServer = async({ idServer }) => {
-        const response = await findByServer({ idServer })
+    const getChatByServer = async({ server }) => {
+        const response = await findByServer({ server })
 
         if (!response.chat) { return { error: { msg: "Chat not found", system: true }, status: 401 } }
 
@@ -35,8 +35,8 @@ export default function ChatControl() {
     }
 
     // Dao
-    const register = async({ idServer = null }) => {
-        const response = await chatDao.register({ idServer })
+    const register = async({ server = null }) => {
+        const response = await chatDao.register({ server })
 
         return response
     }
@@ -47,8 +47,8 @@ export default function ChatControl() {
         return response
     }
 
-    const findByServer = async({ idServer }) => {
-        const response = await chatDao.findByServer({ idServer })
+    const findByServer = async({ server }) => {
+        const response = await chatDao.findByServer({ server })
 
         return response
     }

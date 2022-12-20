@@ -26,7 +26,7 @@ const UserSchema = mongoose.Schema({
         type: Boolean,
         require: true,
     },
-    idServerConnected: {
+    serverConnected: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Server",
         default: null

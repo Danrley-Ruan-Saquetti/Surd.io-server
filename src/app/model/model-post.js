@@ -1,12 +1,12 @@
 import mongoose from "../../database/index.js"
 
 const PostSchema = mongoose.Schema({
-    idChat: {
+    chat: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Chat",
         require: true
     },
-    idUser: {
+    user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         default: null

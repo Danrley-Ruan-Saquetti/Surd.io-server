@@ -8,10 +8,10 @@ export default function PostControl() {
     const chatDao = ChatDao()
     const userDao = UserDao()
 
-    const register = async({ body = "", idChat = null, idUser = null, info = false }) => {
+    const register = async({ body = "", chat = null, user = null, info = false }) => {
         if (!body) { return { error: { msg: "Inform the body of post", body: true }, status: 400 } }
 
-        const response = await registerPost({ body, idUser, info, idChat })
+        const response = await registerPost({ body, user, info, chat })
 
         if (response.error) { return { error: { msg: "Cannot send Post", system: true }, status: 401 } }
 
@@ -20,12 +20,12 @@ export default function PostControl() {
         return { post, status: 200 }
     }
 
-    const systemSendPost = async(body = "", idChat = null) => {
+    const systemSendPost = async(body = "", chat = null) => {
         const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
 
-        const response = await register({ body, idChat, info: true })
+        const response = await register({ body, chat, info: true })
 
         return response
     }
@@ -38,13 +38,13 @@ export default function PostControl() {
 
         const { user } = authValid
 
-        const responseChat = await chatDao.findByServer({ idServer: user.idServerConnected })
+        const responseChat = await chatDao.findByServer({ idServer: user.serverConnected })
 
         if (responseChat.error) { return { error: { msg: "Server not found", system: true }, status: 401 } }
 
         const { chat } = responseChat
 
-        const response = await register({ body, idChat: chat._id, idUser: user._id })
+        const response = await register({ body, chat: chat._id, user: user._id })
 
         return response
     }
@@ -56,19 +56,19 @@ export default function PostControl() {
 
         const { user } = authValid
 
-        const responseChat = await findPostsByIdServer({ idServer: user.idServerConnected })
+        const responseChat = await findPostsByIdServer({ idServer: user.serverConnected })
 
         if (responseChat.error) { return { error: { msg: "Cannot get posts", system: true }, status: 401 } }
 
         const { posts } = responseChat
 
         for (let i = 0; i < posts.length; i++) {
-            const responseUser = await userDao.findById({ _id: posts[i].idUser })
+            const responseUser = await userDao.findById({ _id: posts[i].user })
 
             const { user } = responseUser
 
             user.password = undefined
-            user.idServerConnected = undefined
+            user.serverConnected = undefined
             user.passwordResetToken = undefined
             user.passwordResetExpires = undefined
             user.authToken = undefined
@@ -79,16 +79,16 @@ export default function PostControl() {
                 user.idAdmin = undefined
             }
 
-            posts[i].idChat = undefined
-            posts[i].idUser = user
+            posts[i].chat = undefined
+            posts[i].user = user
         }
 
         return { posts, status: 200 }
     }
 
     // DaoFriend
-    const registerPost = async({ body = "", idChat = null, idUser = null, info = false }) => {
-        const response = await postDao.register({ body, idChat, idUser, info })
+    const registerPost = async({ body = "", chat = null, user = null, info = false }) => {
+        const response = await postDao.register({ body, chat, user, info })
         return response
     }
 
@@ -99,7 +99,7 @@ export default function PostControl() {
 
         const { chat } = responseChat
 
-        const response = await postDao.listByChat({ idChat: chat._id })
+        const response = await postDao.listByChat({ chat: chat._id })
 
         return response
     }

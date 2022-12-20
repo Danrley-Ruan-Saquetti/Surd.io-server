@@ -1,10 +1,8 @@
-import ChatDao from "./dao-chat.js"
-import ServerDao from "./dao-server.js"
 import Post from "./model-post.js"
 
 export default function PostDao() {
-    const register = async({ idChat = null, idUser = null, body = "", info = false }) => {
-        const response = await Post.create({ idChat, idUser, body, info }).then(async(res) => {
+    const register = async({ chat = null, user = null, body = "", info = false }) => {
+        const response = await Post.create({ chat, user, body, info }).then(async(res) => {
             return { post: res }
         }).catch(res => {
             return { error: res }
@@ -23,8 +21,8 @@ export default function PostDao() {
         return response
     }
 
-    const listByChat = async({ idChat }) => {
-        const response = await Post.find({ idChat }).then(async(res) => {
+    const listByChat = async({ chat }) => {
+        const response = await Post.find({ chat }).then(async(res) => {
             return { posts: res }
         }).catch(res => {
             return { error: res }
