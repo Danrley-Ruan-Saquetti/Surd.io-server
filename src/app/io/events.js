@@ -13,8 +13,10 @@ const postControl = PostControl()
 const friendControl = FriendControl()
 const adminControl = AdminControl()
 
-io.on("connection", (socket) => {
+io.on("connection", async(socket) => {
     const idSocket = socket.id
+
+    await userControl.EUserConnect(idSocket)
 
     const socketEmit = ({ ev = "", data = {} }) => {
         socket.emit(`${ev}`, data)

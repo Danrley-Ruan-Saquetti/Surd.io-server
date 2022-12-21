@@ -2,10 +2,11 @@ import bcryptjs from "bcryptjs"
 import crypto from "crypto"
 import UserDao from "../model/dao-user.js"
 import ServerControl from "./control-server.js"
-import { generatedToken, validToken } from "../util/token.service.js"
 import AdminControl from "./control-admin.js"
 import PostControl from "./control-post.js"
+import { generatedToken, validToken } from "../util/token.service.js"
 import { RULES_USER } from "../business-rule/rules.js"
+import { getSocket, io, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
 
 export default function UserControl() {
     const userDao = UserDao()
@@ -83,8 +84,6 @@ export default function UserControl() {
 
         const { user } = response
 
-        let warning = null
-
         if (isAdmin) {
             const responseAdmin = await adminControl.createAdmin({ user, idAdmin, tokenAdmin })
 
@@ -100,20 +99,19 @@ export default function UserControl() {
         } else {
             const responseLobby = await serverControl.findLobby()
 
-            let _idServer = null
+            if (!responseLobby.server) { return { success: { msg: "User created successfully", system: true }, error: { msg: "Cannot connect lobby", system: true }, warning: { msg: "Please, effect login", system: true } } }
 
-            if (!responseLobby.server) {
-                warning = { msg: "Cannot connected lobby", system: true }
-            } else {
-                const { server } = responseLobby
-                _idServer = server._id
-            }
+            const { server } = responseLobby
+
+            const responseSocket = await socketJoinRoom({ idSocket, keyRoom: server._id })
+
+            if (!responseSocket.valueOf) { return { success: { msg: "User created successfully", system: true }, error: { msg: "Cannot connect lobby", system: true }, warning: { msg: "Please, effect login", system: true } } }
 
             const token = generatedToken({ id: user, admin: isAdmin })
 
             user.authToken = token
             user.online = true
-            user.serverConnected = _idServer
+            user.serverConnected = server._id
 
             postControl.systemSendPost({ body: `User ${username} connected`, idServer: user.serverConnected })
         }
@@ -126,7 +124,7 @@ export default function UserControl() {
         user.idSocket = undefined
         user.serverConnected = undefined
 
-        return { user, success: { msg: "User created successfully", system: true }, warning, status: 200 }
+        return { user, success: { msg: "User created successfully", system: true }, status: 200 }
     }
 
     const userLogin = async({ login = "", password = "", idSocket }) => {
@@ -141,10 +139,6 @@ export default function UserControl() {
             return { error: { msg: "Inform the password", password: true }, status: 400 }
         }
 
-        const responseSocket = await findByIdSocket({ idSocket })
-
-        if (responseSocket.user) { return { error: { msg: "Host already connected", system: true }, status: 401 } }
-
         const validAuth = await validAuthentication({ login, password })
 
         if (!validAuth.valueOf) { return { error: validAuth.error, status: 401 } }
@@ -158,6 +152,10 @@ export default function UserControl() {
         if (!responseLobby.server) { return { error: { msg: "Cannot connect lobby, try again", system: true }, status: 401 } }
 
         const { server } = responseLobby
+
+        const responseSocket = await socketJoinRoom({ idSocket, keyRoom: server._id })
+
+        if (!responseSocket.valueOf) { return { error: { msg: "Cannot connect lobby. Please, try again", system: true }, status: 401 } }
 
         const token = generatedToken({ id: user, admin: user.idAdmin })
 
@@ -200,6 +198,10 @@ export default function UserControl() {
         user.idSocket = null
 
         await user.save()
+
+        const responseSocket = await socketLeaveRoom({ idSocket })
+
+        if (!responseSocket.valueOf) { return { error: { msg: "Cannot disconnect room. Please, load page for login", system: true }, status: 401 } }
 
         return { success: { msg: "User logged out successfully", system: true }, status: 200 }
     }
@@ -346,10 +348,14 @@ export default function UserControl() {
     }
 
     // Events
+    const EUserConnect = async(idSocket) => {
+
+    }
+
     const EUserDisconnect = async({ idSocket }) => {
         const response = await findByIdSocket({ idSocket })
 
-        if (response.error) { return { error: { msg: "User not found", system: true }, status: 400 } }
+        if (!response.user) { return { status: 401 } }
 
         const { user } = response
 
@@ -407,9 +413,10 @@ export default function UserControl() {
         userForgotPassword,
         userResetPassword,
         selectUser,
+        userConnectServer,
         queryUser,
         listUsers,
         EUserDisconnect,
-        userConnectServer,
+        EUserConnect,
     }
 }
