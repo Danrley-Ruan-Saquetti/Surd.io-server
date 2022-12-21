@@ -33,6 +33,55 @@ io.on("connection", async(socket) => {
         }
     })
 
+    // Auth
+    socket.on("auth/register", async(req) => {
+        const { username, email, password, idAdmin, isAdmin, tokenAdmin } = req
+
+        try {
+            const response = await userControl.userRegister({ idSocket, username, email, password, idAdmin, isAdmin, tokenAdmin })
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "auth/register/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "auth/register/res", data: { error: { msg: "Cannot register user", system: true } } })
+        }
+    })
+
+    socket.on("auth/login", async(req) => {
+        const { login, password } = req
+
+        try {
+            const response = await userControl.userLogin({ idSocket, login, password })
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "auth/login/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "auth/login/res", data: { error: { msg: "Cannot login user", system: true } } })
+        }
+    })
+
+    socket.on("auth/logout", async(req) => {
+        const { token } = req
+
+        try {
+            const response = await userControl.userLogout({ idSocket, token })
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "auth/logout/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "auth/logout/res", data: { error: { msg: "Cannot logout user", system: true } } })
+        }
+    })
+
     // User
     socket.on("users", async(req) => {
         const { token } = req
@@ -50,7 +99,7 @@ io.on("connection", async(socket) => {
         }
     })
 
-    socket.on("/users/select", async(req) => {
+    socket.on("users/select", async(req) => {
         const { token } = req
 
         try {
@@ -66,7 +115,7 @@ io.on("connection", async(socket) => {
         }
     })
 
-    socket.on("/users/query", async(req) => {
+    socket.on("users/query", async(req) => {
         const { token, username } = req
 
         try {
@@ -82,55 +131,7 @@ io.on("connection", async(socket) => {
         }
     })
 
-    socket.on("/users/register", async(req) => {
-        const { username, email, password, idAdmin, isAdmin, tokenAdmin } = req
-
-        try {
-            const response = await userControl.userRegister({ idSocket, username, email, password, idAdmin, isAdmin, tokenAdmin })
-
-            response.valueOf = undefined
-            response.status = undefined
-
-            socketEmit({ ev: "users/register/res", data: response })
-        } catch (err) {
-            console.log(err);
-            socketEmit({ ev: "users/register/res", data: { error: { msg: "Cannot register user", system: true } } })
-        }
-    })
-
-    socket.on("/users/login", async(req) => {
-        const { login, password } = req
-
-        try {
-            const response = await userControl.userLogin({ idSocket, login, password })
-
-            response.valueOf = undefined
-            response.status = undefined
-
-            socketEmit({ ev: "users/login/res", data: response })
-        } catch (err) {
-            console.log(err);
-            socketEmit({ ev: "users/login/res", data: { error: { msg: "Cannot login user", system: true } } })
-        }
-    })
-
-    socket.on("/users/logout", async(req) => {
-        const { token } = req
-
-        try {
-            const response = await userControl.userLogout({ idSocket, token })
-
-            response.valueOf = undefined
-            response.status = undefined
-
-            socketEmit({ ev: "users/logout/res", data: response })
-        } catch (err) {
-            console.log(err);
-            socketEmit({ ev: "users/logout/res", data: { error: { msg: "Cannot logout user", system: true } } })
-        }
-    })
-
-    socket.on("/users/remove", async(req) => {
+    socket.on("users/remove", async(req) => {
         const { token } = req
 
         try {
@@ -146,7 +147,7 @@ io.on("connection", async(socket) => {
         }
     })
 
-    socket.on("/users/forgot-password", async(req) => {
+    socket.on("users/forgot-password", async(req) => {
         const { token } = req
 
         try {
@@ -162,7 +163,7 @@ io.on("connection", async(socket) => {
         }
     })
 
-    socket.on("/users/reset-password", async(req) => {
+    socket.on("users/reset-password", async(req) => {
         const { token } = req
 
         try {
@@ -178,7 +179,7 @@ io.on("connection", async(socket) => {
         }
     })
 
-    socket.on("/users/connect-server", async(req) => {
+    socket.on("users/connect-server", async(req) => {
         const { token, _id } = req
 
         try {
