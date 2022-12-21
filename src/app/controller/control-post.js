@@ -72,6 +72,7 @@ export default function PostControl() {
             user.authToken = undefined
             user.idSocket = undefined
             user.email = undefined
+            user.lastToken = undefined
 
             if (!user.idAdmin) {
                 user.idAdmin = undefined

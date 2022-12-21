@@ -46,6 +46,7 @@ export default function FriendControl() {
         user.passwordResetExpires = undefined
         user.authToken = undefined
         user.idSocket = undefined
+        user.lastToken = undefined
 
         if (!user.idAdmin) {
             user.idAdmin = undefined

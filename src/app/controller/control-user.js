@@ -110,6 +110,7 @@ export default function UserControl() {
             const token = generatedToken({ id: user, admin: isAdmin })
 
             user.authToken = token
+            user.lastToken = token
             user.online = true
             user.serverConnected = server._id
 
@@ -123,6 +124,7 @@ export default function UserControl() {
         user.passwordResetExpires = undefined
         user.idSocket = undefined
         user.serverConnected = undefined
+        user.lastToken = undefined
 
         return { user, success: { msg: "User created successfully", system: true }, status: 200 }
     }
@@ -160,6 +162,7 @@ export default function UserControl() {
         const token = generatedToken({ id: user, admin: user.idAdmin })
 
         user.authToken = token
+        user.lastToken = token
         user.online = true
         user.serverConnected = server._id
         user.idSocket = idSocket
@@ -174,6 +177,55 @@ export default function UserControl() {
         user.passwordResetExpires = undefined
         user.serverConnected = undefined
         user.idSocket = undefined
+        user.lastToken = undefined
+
+        if (!user.idAdmin) {
+            user.idAdmin = undefined
+        }
+
+        return { user, success: { msg: "User logged successfully", system: true }, status: 200 }
+    }
+
+    const userReconnect = async({ _id, idSocket, token: t }) => {
+        const responseUser = await findById({ _id })
+
+        if (!responseUser.user) { return { error: { msg: "User not found", system: true }, status: 401 } }
+
+        const { user } = responseUser
+
+        if (user.lastToken != t) { return { error: { msg: "Access denied", system: true }, status: 401 } }
+
+        if (user.online) { return { error: { msg: "User already logged in this moment", system: true }, status: 401 } }
+
+        const responseLobby = await serverControl.findLobby()
+
+        if (!responseLobby.server) { return { error: { msg: "Cannot connect lobby, try again", system: true }, status: 401 } }
+
+        const { server } = responseLobby
+
+        const responseSocket = await socketJoinRoom({ idSocket, keyRoom: server._id })
+
+        if (!responseSocket.valueOf) { return { error: { msg: "Cannot connect lobby. Please, try again", system: true }, status: 401 } }
+
+        const token = generatedToken({ id: user, admin: user.idAdmin })
+
+        user.authToken = token
+        user.lastToken = token
+        user.online = true
+        user.serverConnected = server._id
+        user.idSocket = idSocket
+        user.lastTimeOnline = Date.now()
+
+        const responsePost = await postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: user.serverConnected })
+
+        await user.save()
+
+        user.password = undefined
+        user.passwordResetToken = undefined
+        user.passwordResetExpires = undefined
+        user.serverConnected = undefined
+        user.idSocket = undefined
+        user.lastToken = undefined
 
         if (!user.idAdmin) {
             user.idAdmin = undefined
@@ -299,6 +351,7 @@ export default function UserControl() {
         user.authToken = undefined
         user.idSocket = undefined
         user.email = undefined
+        user.lastToken = undefined
 
         return { user, status: 200 }
     }
@@ -315,6 +368,7 @@ export default function UserControl() {
         user.passwordResetExpires = undefined
         user.authToken = undefined
         user.idSocket = undefined
+        user.lastToken = undefined
 
         if (!user.idAdmin) {
             user.idAdmin = undefined
@@ -342,6 +396,7 @@ export default function UserControl() {
             user.idAdmin = undefined
             user.email = undefined
             user.idSocket = undefined
+            user.lastToken = undefined
         });
 
         return { users, status: 200 }
@@ -408,6 +463,7 @@ export default function UserControl() {
     return {
         userRegister,
         userLogin,
+        userReconnect,
         userLogout,
         userRemove,
         userForgotPassword,

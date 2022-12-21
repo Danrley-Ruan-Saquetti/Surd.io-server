@@ -66,6 +66,22 @@ io.on("connection", async(socket) => {
         }
     })
 
+    socket.on("auth/login/reconnect", async(req) => {
+        const { _id, authToken } = req
+
+        try {
+            const response = await userControl.userReconnect({ idSocket, _id, token: authToken })
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "auth/login/reconnect/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "auth/login/reconnect/res", data: { error: { msg: "Cannot login user", system: true } } })
+        }
+    })
+
     socket.on("auth/logout", async(req) => {
         const { token } = req
 

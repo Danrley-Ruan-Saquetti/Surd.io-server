@@ -83,6 +83,10 @@ const UserSchema = mongoose.Schema({
         type: String,
         default: null
     },
+    lastToken: {
+        type: String,
+        default: null
+    },
     lastTimeOnline: {
         type: Date,
         default: Date.now
