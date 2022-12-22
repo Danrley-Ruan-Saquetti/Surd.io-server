@@ -241,7 +241,7 @@ export default function UserControl() {
 
         const { user } = authValid
 
-        postControl.systemSendPost({ body: `User ${username} disconnected`, idServer: user.serverConnected })
+        postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
 
         user.online = false
         user.lastTimeOnline = Date.now()
@@ -327,7 +327,7 @@ export default function UserControl() {
 
         user.serverConnected = server._id
 
-        postControl.systemSendPost({ body: `User ${username} connected`, idServer: user.serverConnected })
+        postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: user.serverConnected })
 
         await user.save()
 
