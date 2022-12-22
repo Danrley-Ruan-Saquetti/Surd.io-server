@@ -25,13 +25,13 @@ export default async function Data() {
 
     const userData = async() => {
         const { users } = await userDao.list().then(res => {
-            res.users.forEach(user => {
+            res.users.forEach(async(user) => {
                 user.online = false
                 user.authToken = null
                 user.idServerConnected = null
                 user.idSocket = null
 
-                user.save()
+                await user.save()
             })
 
             return res
@@ -41,12 +41,12 @@ export default async function Data() {
     const postData = async() => {
         const response = await postDao.list()
 
-        response.posts.forEach((post) => {
-            post.remove()
+        response.posts && response.posts.forEach(async(post) => {
+            await post.remove()
         })
     }
 
     serverData()
     userData()
-        // postData()
+    postData()
 }

@@ -126,6 +126,8 @@ export default function UserControl() {
         user.serverConnected = undefined
         user.lastToken = undefined
 
+        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} registered`);
+
         return { user, success: { msg: "User created successfully", system: true }, status: 200 }
     }
 
@@ -183,6 +185,8 @@ export default function UserControl() {
             user.idAdmin = undefined
         }
 
+        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} logged`);
+
         return { user, success: { msg: "User logged successfully", system: true }, status: 200 }
     }
 
@@ -231,7 +235,9 @@ export default function UserControl() {
             user.idAdmin = undefined
         }
 
-        return { user, success: { msg: "User logged successfully", system: true }, status: 200 }
+        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} reconnected`);
+
+        return { user, success: { msg: "User reconnected successfully", system: true }, status: 200 }
     }
 
     const userLogout = async({ token, idSocket }) => {
@@ -255,6 +261,8 @@ export default function UserControl() {
 
         if (!responseSocket.valueOf) { return { error: { msg: "Cannot disconnect room. Please, load page for login", system: true }, status: 401 } }
 
+        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} login out`);
+
         return { success: { msg: "User logged out successfully", system: true }, status: 200 }
     }
 
@@ -266,6 +274,8 @@ export default function UserControl() {
         const { user } = authValid
 
         await user.remove()
+
+        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} deleted user`);
 
         return { success: { msg: "User removed successfully", system: true }, status: 200 }
     }
@@ -330,6 +340,8 @@ export default function UserControl() {
         postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: user.serverConnected })
 
         await user.save()
+
+        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} connect room {${_id}}`);
 
         return { success: { msg: "Server connected successfully", system: true }, status: 200 }
     }
@@ -404,11 +416,13 @@ export default function UserControl() {
 
     // Events
     const EUserConnect = async(idSocket) => {
-
+        console.log(`[IO] Host => {${idSocket}} connected`);
     }
 
     const EUserDisconnect = async({ idSocket }) => {
         const response = await findByIdSocket({ idSocket })
+
+        !response.user && console.log(`[IO] Host => {${idSocket}} disconnected`);
 
         if (!response.user) { return { status: 401 } }
 
@@ -420,6 +434,8 @@ export default function UserControl() {
         await user.save()
 
         postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
+
+        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} disconnected`);
 
         return { status: 200 }
     }
