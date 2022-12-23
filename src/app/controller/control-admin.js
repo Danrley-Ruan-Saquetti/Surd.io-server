@@ -5,18 +5,18 @@ export default function AdminControl() {
     const adminDao = AdminDao()
 
     // Use Cases
-    const createAdmin = async({ user, idAdmin, tokenAdmin }) => {
-        const tokenValid = await validToken(tokenAdmin, idAdmin)
+    const createAdmin = async({ user, idSocket, tokenAdmin }) => {
+        const tokenValid = await validToken(tokenAdmin, idSocket)
 
         if (!tokenValid.valueOf) { return tokenValid }
 
-        const responseAdminCreator = await findById({ _id: idAdmin })
+        const responseAdminCreator = await findById({ _id: idSocket })
 
         if (responseAdminCreator.error) { return { error: { msg: "Access Denied", system: true }, status: 401, valueOf: false } }
 
         const response = await register({ idUser: user._id })
 
-        if (response.error) { return { error: { msg: "Cannot create admin", system: true }, status: 401 } }
+        if (response.error) { return { error: { msg: "Cannot create admin", system: true }, status: 401, valueOf: false } }
 
         const { admin } = response
 

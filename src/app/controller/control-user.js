@@ -65,7 +65,7 @@ export default function UserControl() {
     }
 
     // Use Cases
-    const userRegister = async({ username = "", email = "", password = "", isAdmin = false, idAdmin = null, tokenAdmin = null, idSocket }) => {
+    const userRegister = async({ username = "", email = "", password = "", isAdmin = false, tokenAdmin = null, idSocket }) => {
         const responseSocket = await findByIdSocket({ idSocket })
 
         if (responseSocket.user) { return { error: { msg: "Host already connected", system: true }, status: 401 } }
@@ -78,17 +78,17 @@ export default function UserControl() {
 
         if (!valuesAlreadyExistsVerified.valueOf) { return { error: valuesAlreadyExistsVerified.error, status: 400 } }
 
-        const response = await register({ username, email, password: await bcryptjs.hash(password, 5), idSocket })
+        const response = await register({ username, email, password: await bcryptjs.hash(password, 5) })
 
         if (response.error) { return { error: { msg: "Cannot register user", system: true }, status: 400 } }
 
         const { user } = response
 
         if (isAdmin) {
-            const responseAdmin = await adminControl.createAdmin({ user, idAdmin, tokenAdmin })
+            const responseAdmin = await adminControl.createAdmin({ user, idSocket, tokenAdmin })
 
             if (!responseAdmin.valueOf) {
-                user.remove()
+                await user.remove()
 
                 return responseAdmin
             }
@@ -105,10 +105,11 @@ export default function UserControl() {
 
             const responseSocket = await socketJoinRoom({ idSocket, keyRoom: server._id })
 
-            if (!responseSocket.valueOf) { return { success: { msg: "User created successfully", system: true }, error: { msg: "Cannot connect lobby", system: true }, warning: { msg: "Please, effect login", system: true } } }
+            if (!responseSocket.valueOf) { return { user, success: { msg: "User created successfully", system: true }, error: { msg: "Cannot connect lobby", system: true }, warning: { msg: "Please, effect login", system: true } } }
 
-            const token = generatedToken({ id: user, admin: isAdmin })
+            const token = generatedToken({ _id: user._id })
 
+            user.idSocket = idSocket
             user.authToken = token
             user.lastToken = token
             user.online = true
@@ -119,16 +120,18 @@ export default function UserControl() {
 
         await user.save()
 
-        user.password = undefined
-        user.passwordResetToken = undefined
-        user.passwordResetExpires = undefined
-        user.idSocket = undefined
-        user.serverConnected = undefined
-        user.lastToken = undefined
+        if (!isAdmin) {
+            user.password = undefined
+            user.passwordResetToken = undefined
+            user.passwordResetExpires = undefined
+            user.idSocket = undefined
+            user.serverConnected = undefined
+            user.lastToken = undefined
+        }
 
         console.log(`[IO] User => {${user._id}} Host => {${idSocket}} registered`);
 
-        return { user, success: { msg: "User created successfully", system: true }, status: 200 }
+        return { user: !isAdmin ? user : undefined, success: { msg: "User created successfully", system: true }, status: 200 }
     }
 
     const userLogin = async({ login = "", password = "", idSocket }) => {
@@ -197,7 +200,7 @@ export default function UserControl() {
 
         const { user } = responseUser
 
-        if (user.lastToken != t) { return { error: { msg: "Access denied", system: true }, status: 401 } }
+        if (`Bearer ${user.lastToken}` != `${t}`) { return { error: { msg: "Access denied", system: true }, status: 401 } }
 
         if (user.online) { return { error: { msg: "User already logged in this moment", system: true }, status: 401 } }
 

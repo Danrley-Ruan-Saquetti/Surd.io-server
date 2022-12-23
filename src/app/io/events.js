@@ -35,10 +35,10 @@ io.on("connection", async(socket) => {
 
     // Auth
     socket.on("auth/register", async(req) => {
-        const { username, email, password, idAdmin, isAdmin, tokenAdmin } = req
-
         try {
-            const response = await userControl.userRegister({ idSocket, username, email, password, idAdmin, isAdmin, tokenAdmin })
+            const { username, email, password, idAdmin, isAdmin, token: authTokenAdmin } = req
+
+            const response = await userControl.userRegister({ idSocket, username, email, password, idAdmin, isAdmin, token: authTokenAdmin })
 
             response.valueOf = undefined
             response.status = undefined
@@ -51,9 +51,9 @@ io.on("connection", async(socket) => {
     })
 
     socket.on("auth/login", async(req) => {
-        const { login, password } = req
-
         try {
+            const { login, password } = req
+
             const response = await userControl.userLogin({ idSocket, login, password })
 
             response.valueOf = undefined
@@ -67,9 +67,9 @@ io.on("connection", async(socket) => {
     })
 
     socket.on("auth/login/reconnect", async(req) => {
-        const { _id, authToken } = req
-
         try {
+            const { _id, authToken } = req
+
             const response = await userControl.userReconnect({ idSocket, _id, token: authToken })
 
             response.valueOf = undefined
@@ -83,10 +83,10 @@ io.on("connection", async(socket) => {
     })
 
     socket.on("auth/logout", async(req) => {
-        const { token } = req
-
         try {
-            const response = await userControl.userLogout({ idSocket, token })
+            const { authToken } = req
+
+            const response = await userControl.userLogout({ idSocket, token: authToken })
 
             response.valueOf = undefined
             response.status = undefined
@@ -100,10 +100,10 @@ io.on("connection", async(socket) => {
 
     // User
     socket.on("users", async(req) => {
-        const { token } = req
-
         try {
-            const response = await userControl.listUsers({ token, idSocket })
+            const { authToken } = req
+
+            const response = await userControl.listUsers({ token: authToken, idSocket })
 
             response.valueOf = undefined
             response.status = undefined
@@ -116,10 +116,10 @@ io.on("connection", async(socket) => {
     })
 
     socket.on("users/select", async(req) => {
-        const { token } = req
-
         try {
-            const response = await userControl.selectUser({ token, idSocket })
+            const { authToken } = req
+
+            const response = await userControl.selectUser({ token: authToken, idSocket })
 
             response.valueOf = undefined
             response.status = undefined
@@ -132,10 +132,10 @@ io.on("connection", async(socket) => {
     })
 
     socket.on("users/query", async(req) => {
-        const { token, username } = req
-
         try {
-            const response = await userControl.queryUser({ token, idSocket, username })
+            const { authToken, username } = req
+
+            const response = await userControl.queryUser({ token: authToken, idSocket, username })
 
             response.valueOf = undefined
             response.status = undefined
@@ -148,10 +148,10 @@ io.on("connection", async(socket) => {
     })
 
     socket.on("users/remove", async(req) => {
-        const { token } = req
-
         try {
-            const response = await userControl.userRemove({ idSocket, token })
+            const { authToken } = req
+
+            const response = await userControl.userRemove({ idSocket, token: authToken })
 
             response.valueOf = undefined
             response.status = undefined
@@ -164,10 +164,10 @@ io.on("connection", async(socket) => {
     })
 
     socket.on("users/forgot-password", async(req) => {
-        const { token } = req
-
         try {
-            const response = await userControl.userForgotPassword({ idSocket, token })
+            const { authToken } = req
+
+            const response = await userControl.userForgotPassword({ idSocket, token: authToken })
 
             response.valueOf = undefined
             response.status = undefined
@@ -180,10 +180,10 @@ io.on("connection", async(socket) => {
     })
 
     socket.on("users/reset-password", async(req) => {
-        const { token } = req
-
         try {
-            const response = await userControl.userResetPassword({ idSocket, token })
+            const { authToken } = req
+
+            const response = await userControl.userResetPassword({ idSocket, token: authToken })
 
             response.valueOf = undefined
             response.status = undefined
@@ -196,10 +196,10 @@ io.on("connection", async(socket) => {
     })
 
     socket.on("users/connect-server", async(req) => {
-        const { token, _id } = req
-
         try {
-            const response = await userControl.userConnectServer({ _id, idSocket, token })
+            const { authToken, _id } = req
+
+            const response = await userControl.userConnectServer({ _id, idSocket, token: authToken })
 
             response.valueOf = undefined
             response.status = undefined
