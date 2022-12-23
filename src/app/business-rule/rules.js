@@ -2,11 +2,17 @@ export const RULES_USER = {
     VALID_REGISTER: ({ username, email, password }) => {
         const error = []
 
+        const INCORRECT_CHARACTERS = " !@#$%&*|\\/?+=§`´{}[]()ºª°<>,:;'\"¹²³£¢"
+
         if (!username) {
             error.push({ msg: "Inform the username", username: true })
         } else {
-            if (username.split(" ").length > 1) {
-                error.push({ msg: "Username incorrect", username: true })
+            for (let i = 0; i < username.length; i++) {
+                const letter = username.charAt(i)
+
+                if (INCORRECT_CHARACTERS.includes(letter)) {
+                    error.push({ msg: "Username incorrect", username: true })
+                }
             }
         }
         if (!email) {
