@@ -49,4 +49,14 @@ export default async function Data() {
     serverData()
     userData()
     postData()
+
+    const responseServers = await serverDao.list()
+
+    responseServers.servers && responseServers.servers.forEach(async(server) => {
+        const responseChats = await chatDao.findByServer({ idServer: server._id })
+
+        responseChats.chat && (function() {
+            postDao.register({ body: "Server Restarted", chat: responseChats.chat._id, info: true })
+        }())
+    })
 }

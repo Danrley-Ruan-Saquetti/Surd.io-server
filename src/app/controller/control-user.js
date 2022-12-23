@@ -6,7 +6,7 @@ import AdminControl from "./control-admin.js"
 import PostControl from "./control-post.js"
 import { generatedToken, validToken } from "../util/token.service.js"
 import { RULES_USER } from "../business-rule/rules.js"
-import { getSocket, io, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
+import { ioEmit, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
 
 export default function UserControl() {
     const userDao = UserDao()
@@ -121,6 +121,8 @@ export default function UserControl() {
         await user.save()
 
         if (!isAdmin) {
+            ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
+
             user.password = undefined
             user.passwordResetToken = undefined
             user.passwordResetExpires = undefined
@@ -177,6 +179,8 @@ export default function UserControl() {
 
         await user.save()
 
+        ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
+
         user.password = undefined
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
@@ -223,9 +227,13 @@ export default function UserControl() {
         user.idSocket = idSocket
         user.lastTimeOnline = Date.now()
 
+        console.log({ token });
+
         const responsePost = await postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: user.serverConnected })
 
         await user.save()
+
+        ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
 
         user.password = undefined
         user.passwordResetToken = undefined
@@ -250,6 +258,8 @@ export default function UserControl() {
 
         const { user } = authValid
 
+        const { serverConnected } = user
+
         postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
 
         user.online = false
@@ -259,6 +269,8 @@ export default function UserControl() {
         user.idSocket = null
 
         await user.save()
+
+        ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} disconnected` }, room: `${serverConnected}` })
 
         const responseSocket = await socketLeaveRoom({ idSocket })
 
@@ -279,6 +291,8 @@ export default function UserControl() {
         await user.remove()
 
         console.log(`[IO] User => {${user._id}} Host => {${idSocket}} deleted user`);
+
+        ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} disconnected` }, room: `${server._id}` })
 
         return { success: { msg: "User removed successfully", system: true }, status: 200 }
     }
@@ -344,6 +358,8 @@ export default function UserControl() {
 
         await user.save()
 
+        ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
+
         console.log(`[IO] User => {${user._id}} Host => {${idSocket}} connect room {${_id}}`);
 
         return { success: { msg: "Server connected successfully", system: true }, status: 200 }
@@ -397,7 +413,34 @@ export default function UserControl() {
 
         if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
 
-        const response = await listUsersOnline()
+        const { user } = tokenValid
+
+        const response = await findUsersByServer({ server: user.serverConnected })
+
+        if (response.error) { return { error: { msg: "Cannot get users", system: true }, status: 401 } }
+
+        const { users } = response
+
+        users.forEach(user => {
+            user.password = undefined
+            user.passwordResetToken = undefined
+            user.passwordResetExpires = undefined
+            user.authToken = undefined
+            user.idAdmin = undefined
+            user.email = undefined
+            user.idSocket = undefined
+            user.lastToken = undefined
+        });
+
+        return { users, status: 200 }
+    }
+
+    const listUsersOnline = async({ idSocket, token }) => {
+        const tokenValid = await validToken(token, idSocket)
+
+        if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
+
+        const response = await findUsersOnline()
 
         if (response.error) { return { error: { msg: "Cannot get users", system: true }, status: 401 } }
 
@@ -438,6 +481,8 @@ export default function UserControl() {
 
         postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
 
+        ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} disconnected` }, room: `${user.serverConnected}` })
+
         console.log(`[IO] User => {${user._id}} Host => {${idSocket}} disconnected`);
 
         return { status: 200 }
@@ -469,12 +514,12 @@ export default function UserControl() {
         return response
     }
 
-    const list = async() => {
-        const response = await userDao.list()
+    const findUsersByServer = async({ server }) => {
+        const response = await userDao.listUsersByServer({ server })
         return response
     }
 
-    const listUsersOnline = async() => {
+    const findUsersOnline = async() => {
         const response = await userDao.listUsersOnline()
         return response
     }
@@ -493,5 +538,6 @@ export default function UserControl() {
         listUsers,
         EUserDisconnect,
         EUserConnect,
+        listUsersOnline,
     }
 }

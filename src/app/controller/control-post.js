@@ -2,6 +2,7 @@ import PostDao from "../model/dao-post.js"
 import ChatDao from "../model/dao-chat.js"
 import UserDao from "../model/dao-user.js"
 import { validToken } from "../util/token.service.js"
+import { ioEmit } from "../io/io.js"
 
 export default function PostControl() {
     const postDao = PostDao()
@@ -22,6 +23,8 @@ export default function PostControl() {
         if (response.error) { return { error: { msg: "Cannot send Post", system: true }, status: 401 } }
 
         const { post } = response
+
+        isServer && ioEmit({ data: { post }, ev: "$/chat/send-post", room: idServer })
 
         return { post, status: 200 }
     }
@@ -52,11 +55,11 @@ export default function PostControl() {
 
         const { user } = authValid
 
-        const responseChat = !idChat ? await findPostsByIdServer({ idServer: user.serverConnected }) : await findPostsByIdChat({ chat: idChat })
+        const responsePosts = !idChat ? await findPostsByIdServer({ idServer: user.serverConnected }) : await findPostsByIdChat({ chat: idChat })
 
-        if (responseChat.error) { return { error: { msg: "Cannot get posts", system: true }, status: 401 } }
+        if (responsePosts.error) { return { error: { msg: "Cannot get posts", system: true }, status: 401 } }
 
-        const { posts } = responseChat
+        const { posts } = responsePosts
 
         for (let i = 0; i < posts.length; i++) {
             if (!posts[i].user) { continue }

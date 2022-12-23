@@ -58,6 +58,6 @@ export const socketLeaveRoom = async({ idSocket }) => {
     return { success: { msg: "Host leave room successfully", system: true }, valueOf: true }
 }
 
-export const ioEmit = ({ ev = "", data = {} }) => {
-    io.emit(`${ev}`, data)
+export const ioEmit = ({ ev = "", room = "", data = {} }) => {
+    !room ? io.emit(`${ev}`, data) : io.to(`${room}`).emit(`${ev}`, data)
 }

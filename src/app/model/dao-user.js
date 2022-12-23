@@ -31,6 +31,16 @@ export default function UserDao() {
         return response
     }
 
+    const listUsersByServer = async({ server }) => {
+        const response = await User.find({ serverConnected: server, online: true }).then(async(res) => {
+            return { users: res }
+        }).catch(res => {
+            return { error: res }
+        })
+
+        return response
+    }
+
     const findById = async({ _id }) => {
         const response = await User.findById(_id).then(async(res) => {
             return { user: res }
@@ -79,5 +89,6 @@ export default function UserDao() {
         findByEmail,
         findByUsername,
         findByIdSocket,
+        listUsersByServer,
     }
 }

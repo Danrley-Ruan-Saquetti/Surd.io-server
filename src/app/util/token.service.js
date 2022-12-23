@@ -20,7 +20,7 @@ export const validAuth = async(token, idSocket) => {
 
     if (!user.online) { return { error: { msg: "User offline", system: true }, status: 401, valueOf: false } }
 
-    if (user.authToken != token) { return { error: { msg: "Token invalid", system: true }, status: 401, valueOf: false } }
+    if (`${user.authToken}` != `${token}`) { return { error: { msg: "Token invalid", system: true }, status: 401, valueOf: false } }
 
     return { user, error: null, valueOf: true, status: 200 }
 }

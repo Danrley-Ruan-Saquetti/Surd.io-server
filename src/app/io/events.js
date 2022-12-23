@@ -115,6 +115,22 @@ io.on("connection", async(socket) => {
         }
     })
 
+    socket.on("users/connected", async(req) => {
+        try {
+            const { authToken } = req
+
+            const response = await userControl.listUsersOnline({ token: authToken, idSocket })
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "users/connected/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "users/connected/res", data: { error: { msg: "Cannot get users", system: true } } })
+        }
+    })
+
     socket.on("users/select", async(req) => {
         try {
             const { authToken } = req
@@ -208,6 +224,40 @@ io.on("connection", async(socket) => {
         } catch (err) {
             console.log(err);
             socketEmit({ ev: "users/reset-password/res", data: { error: { msg: "Cannot operation reset password", system: true } } })
+        }
+    })
+
+    // Post
+    socket.on("chat", async(req) => {
+        try {
+            const { authToken, idChat } = req
+
+            const response = await postControl.listPosts({ idChat, idSocket, token: authToken })
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "chat/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "chat/res", data: { error: { msg: "Cannot operation reset password", system: true } } })
+        }
+    })
+
+    socket.on("chat/send-post", async(req) => {
+        try {
+            const { body, token, id_socket, idChat } = req
+
+            const response = await postControl.userSendPost({ idSocket: id_socket, token, body, idChat })
+
+            const { status } = response
+
+            response.status = undefined
+
+            socketEmit({ ev: "chat/send-post/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "chat/send-post/res", data: { error: { msg: "Cannot send post", system: true } } })
         }
     })
 })
