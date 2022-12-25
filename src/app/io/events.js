@@ -246,12 +246,13 @@ io.on("connection", async(socket) => {
 
     socket.on("chat/send-post", async(req) => {
         try {
-            const { body, token, id_socket, idChat } = req
+            const { body, authToken, idChat } = req
 
-            const response = await postControl.userSendPost({ idSocket: id_socket, token, body, idChat })
+            const response = await postControl.userSendPost({ idSocket, token: authToken, body, idChat })
 
             const { status } = response
 
+            response.valueOf = undefined
             response.status = undefined
 
             socketEmit({ ev: "chat/send-post/res", data: response })
