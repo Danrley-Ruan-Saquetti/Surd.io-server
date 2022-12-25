@@ -261,4 +261,167 @@ io.on("connection", async(socket) => {
             socketEmit({ ev: "chat/send-post/res", data: { error: { msg: "Cannot send post", system: true } } })
         }
     })
+
+    // Friend
+    socket.on("friend", async(req) => {
+        try {
+            const { authToken } = req
+
+            const response = await friendControl.listFriendsById({ idSocket, token: authToken })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "friend/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "friend/res", data: { error: { msg: "Cannot get friends", system: true } } })
+        }
+    })
+
+    socket.on("friend/send-invite", async(req) => {
+        try {
+            const { authToken, _id } = req
+
+            const response = await friendControl.sendInviteFriendship({ to: _id, idSocket, token: authToken })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "friend/send-invite/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "friend/send-invite/res", data: { error: { msg: "Cannot send invite", system: true } } })
+        }
+    })
+
+    socket.on("friend/accept-invite", async(req) => {
+        try {
+            const { authToken, _id } = req
+
+            const response = await friendControl.acceptInviteFriendship({ idSocket, token: authToken, _id })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "friend/accept-invite/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "friend/accept-invite/res", data: { error: { msg: "Cannot accept invite", system: true } } })
+        }
+    })
+
+    socket.on("friend/denied-invite", async(req) => {
+        try {
+            const { authToken, _id } = req
+
+            const response = await friendControl.deniedInviteFriendship({ idSocket, token: authToken, _id })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "friend/denied-invite/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "friend/denied-invite/res", data: { error: { msg: "Cannot denied invite", system: true } } })
+        }
+    })
+
+    socket.on("friend/cancel-invite", async(req) => {
+        try {
+            const { authToken, _id } = req
+
+            const response = await friendControl.cancelInvite({ idSocket, token: authToken, _id })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "friend/cancel-invite/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "friend/cancel-invite/res", data: { error: { msg: "Cannot cancel invite", system: true } } })
+        }
+    })
+
+    socket.on("friend/remove-friendship", async(req) => {
+        try {
+            const { authToken, _id } = req
+
+            const response = await friendControl.removeFriendship({ idSocket, token: authToken, _id })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "friend/remove-friendship/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "friend/remove-friendship/res", data: { error: { msg: "Cannot remove friendship", system: true } } })
+        }
+    })
+
+    socket.on("friend/pending/on-hold", async(req) => {
+        try {
+            const { authToken } = req
+
+            const response = await friendControl.listInvitesPendingOnHold({ idSocket, token: authToken })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "friend/pending/on-hold/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "friend/pending/on-hold/res", data: { error: { msg: "Cannot get invites", system: true } } })
+        }
+    })
+
+    socket.on("friend/pending/awaiting", async(req) => {
+        try {
+            const { authToken } = req
+
+            const response = await friendControl.listInvitesPendingAwaiting({ idSocket, token: authToken })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "friend/pending/awaiting/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "friend/pending/awaiting/res", data: { error: { msg: "Cannot get invites", system: true } } })
+        }
+    })
+
+    socket.on("friend/denied", async(req) => {
+        try {
+            const { authToken } = req
+
+            const response = await friendControl.listInvitesDeniedByUser({ idSocket, token: authToken })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "friend/pending/awaiting/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "friend/pending/awaiting/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
+        }
+    })
 })
