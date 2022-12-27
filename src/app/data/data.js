@@ -9,15 +9,17 @@ const userDao = UserDao()
 const postDao = PostDao()
 
 export default async function Data() {
-    const servers = [{ name: "Server A", isLobby: false }, { name: "Server B", isLobby: false }, { name: "Server C", isLobby: false }, { name: "Server D", isLobby: false }, { name: "Server E", isLobby: false }, { name: "Lobby", isLobby: true }]
+    const servers = [{ name: "Server A", isLobby: false }, { name: "Server B", isLobby: false }, { name: "Server C", isLobby: false }, { name: "Server D", isLobby: false }, { name: "Server E", isLobby: false }, { name: "isLobby", isLobby: true }]
 
     const serverData = () => {
         servers.forEach(async(s) => {
             const responseServer = await serverDao.findByName(s)
-            const responseChatServer = responseServer.server ? await chatDao.findByServer({ idServer: responseServer.server._id }) : { error: {} }
 
-            responseServer.server && await responseServer.server.remove()
-            responseChatServer.chat && await responseChatServer.chat.remove()
+            if (responseServer.server) {
+                responseServer.server.playersOnline = 0
+                await responseServer.server.save()
+                return
+            }
 
             const responseRegisterServer = await serverDao.register(s)
 
@@ -30,7 +32,7 @@ export default async function Data() {
             res.users.forEach(async(user) => {
                 user.online = false
                 user.authToken = null
-                user.idServerConnected = null
+                user.serverConnected = null
                 user.idSocket = null
 
                 await user.save()
