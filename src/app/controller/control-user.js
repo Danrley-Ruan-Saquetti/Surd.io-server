@@ -17,17 +17,17 @@ export default function UserControl() {
     const friendDao = FriendDao()
 
     const verifyValuesAlreadyExists = async({ username, email, _id = null }) => {
-        const error = []
+        const error = {}
 
         const { user: userUsername } = await findByUsername({ username })
 
         if (userUsername) {
             if (_id) {
                 if (_id != userUsername._id) {
-                    error.push({ msg: "Username already exist", username: true })
+                    error.username = { msg: "Username already exist", username: true }
                 }
             } else {
-                error.push({ msg: "Username already exist", username: true })
+                error.username = { msg: "Username already exist", username: true }
             }
         }
 
@@ -36,30 +36,28 @@ export default function UserControl() {
         if (userEmail) {
             if (_id) {
                 if (_id && _id != userEmail._id) {
-                    error.push({ msg: "E-mail already exist", email: true })
+                    error.email = { msg: "E-mail already exist", email: true }
                 }
             } else {
-                error.push({ msg: "E-mail already exist", email: true })
+                error.email = { msg: "E-mail already exist", email: true }
             }
         }
 
-        return { error, valueOf: error.length == 0 }
+        return { error, valueOf: Object.keys(error).length == 0 }
     }
 
     const validAuthentication = async({ login, password }) => {
         const responseEmail = await findByEmail({ email: login })
 
-        let user = null
+        let { user } = responseEmail
 
-        if (responseEmail.user) {
-            user = responseEmail.user
-        } else {
+        if (!user) {
             const responseUsername = await findByUsername({ username: login })
 
-            if (responseUsername.user) { user = responseUsername.user }
+            user = responseUsername.user
         }
 
-        if (!user) { return { error: { msg: "User not found", system: true }, valueOf: false } }
+        if (!user) { return { error: { msg: "User not found", login: true }, valueOf: false } }
 
         if (!await bcryptjs.compare(password, user.password)) { return { error: { msg: "Password incorrect", password: true }, valueOf: false } }
 
