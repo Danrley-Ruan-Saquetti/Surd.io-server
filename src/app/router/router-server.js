@@ -41,10 +41,10 @@ router.get("/:_id", async(req, res) => {
 
 router.post("/create", async(req, res) => {
     const { token } = req.headers
-    const { name, lobby } = req.body
+    const { name, isLobby } = req.body
 
     try {
-        const response = await serverControl.createServer({ name, lobby, token })
+        const response = await serverControl.createServer({ name, isLobby, token })
 
         const { status } = response
 

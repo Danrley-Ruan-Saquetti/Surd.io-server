@@ -1,8 +1,8 @@
 import Server from "./model-server.js"
 
 export default function ServerDao() {
-    const register = async({ name = "", lobby = false, playersOnline = 0 }) => {
-        const response = await Server.create({ name, lobby, playersOnline }).then(async(res) => {
+    const register = async({ name = "", isLobby = false, playersOnline = 0 }) => {
+        const response = await Server.create({ name, isLobby, playersOnline }).then(async(res) => {
             return { server: res }
         }).catch(res => {
             return { error: res }
@@ -12,7 +12,7 @@ export default function ServerDao() {
     }
 
     const list = async() => {
-        const response = await Server.find().then(async(res) => {
+        const response = await Server.find({ isLobby: false }).then(async(res) => {
             return { servers: res }
         }).catch(res => {
             return { error: res }
@@ -42,7 +42,7 @@ export default function ServerDao() {
     }
 
     const findLobby = async() => {
-        const response = await Server.findOne({ lobby: true }).then(async(res) => {
+        const response = await Server.findOne({ isLobby: true }).then(async(res) => {
             return { server: res }
         }).catch(res => {
             return { error: res }

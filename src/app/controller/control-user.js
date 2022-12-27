@@ -6,7 +6,7 @@ import AdminControl from "./control-admin.js"
 import PostControl from "./control-post.js"
 import { generatedToken, validToken } from "../util/token.service.js"
 import { RULES_SERVER, RULES_USER } from "../business-rule/rules.js"
-import { ioEmit, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
+import { getSocket, ioEmit, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
 import FriendDao from "../model/dao-friend.js"
 
 export default function UserControl() {
@@ -132,7 +132,6 @@ export default function UserControl() {
             user.passwordResetToken = undefined
             user.passwordResetExpires = undefined
             user.idSocket = undefined
-            user.serverConnected = undefined
             user.lastToken = undefined
         }
 
@@ -192,7 +191,6 @@ export default function UserControl() {
         user.password = undefined
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
-        user.serverConnected = undefined
         user.idSocket = undefined
         user.lastToken = undefined
 
@@ -247,7 +245,6 @@ export default function UserControl() {
         user.password = undefined
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
-        user.serverConnected = undefined
         user.idSocket = undefined
         user.lastToken = undefined
 
@@ -373,21 +370,46 @@ export default function UserControl() {
 
         const { server } = responseServer
 
-        if (!server.lobby && server.playersOnline > RULES_SERVER.LIMIT_PLAYERS) { return { error: { msg: "Server full", system: true }, status: 401 } }
+        if (!server.isLobby && server.playersOnline > RULES_SERVER.LIMIT_PLAYERS) { return { error: { msg: "Server full", system: true }, status: 401 } }
 
         user.serverConnected = server._id
-
-        postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: user.serverConnected })
 
         await user.save()
 
         server.playersOnline++
+
             await server.save()
 
-        responseOldServer.server && responseOldServer.playersOnline--
-            responseOldServer.server && await responseOldServer.save()
+        responseOldServer.server && responseOldServer.server.playersOnline--
+            responseOldServer.server && await responseOldServer.server.save()
+
+        const responseSocket = await getSocket(user.idSocket)
+
+        user.password = undefined
+        user.passwordResetToken = undefined
+        user.passwordResetExpires = undefined
+        user.idSocket = undefined
+        user.lastToken = undefined
+
+        if (!user.idAdmin) {
+            user.idAdmin = undefined
+        }
+
+        if (!server.isLobby) {
+            responseOldServer.server && postControl.systemSendPost({ body: `User ${user.username} enter ${server.name}`, idServer: responseOldServer.server._id })
+        } else {
+            responseOldServer.server && postControl.systemSendPost({ body: `User ${user.username} leave`, idServer: responseOldServer.server._id })
+        }
+
+        responseSocket.socket && socketJoinRoom({ idSocket, keyRoom: user.serverConnected })
+
+        responseSocket.valueOf && responseSocket.socket.emit("$/users/current/update", { msg: "Update current user", user })
+
+        postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: server._id })
 
         ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
+
+        !server.isLobby && responseOldServer.server && ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} enter ${server.name}` }, room: `${responseOldServer.server._id}` })
 
         console.log(`[IO] User => {${user._id}} Host => {${idSocket}} connect room {${_id}}`);
 
@@ -444,7 +466,9 @@ export default function UserControl() {
 
         const { user } = tokenValid
 
-        const response = await findUsersByServer({ server: user.serverConnected })
+        const responseServer = await serverControl.findById({ _id: user.serverConnected })
+
+        const response = responseServer.server ? !responseServer.server.isLobby ? await findUsersByServer({ server: user.serverConnected }) : await findUsersOnline() : { error: {} }
 
         if (response.error) { return { error: { msg: "Cannot get users", system: true }, status: 401 } }
 
@@ -512,8 +536,6 @@ export default function UserControl() {
 
             const responseFriendship = await friendDao.findFriendshipByUsers({ users: [user._id, u._id] })
 
-            console.log({ user: user._id, friend: responseFriendship.friendship || null });
-
             const friend = {
                 isInvited: !responseFriendship.error,
                 isPending: responseFriendship.friendship ? responseFriendship.friendship.pending : null,
@@ -570,6 +592,22 @@ export default function UserControl() {
         return { status: 200 }
     }
 
+    const EUserStartGame = async({ _id, idSocket, token }) => {
+        const responseConnectServer = await userConnectServer({ _id, idSocket, token })
+
+        return responseConnectServer
+    }
+
+    const EUserQuitGame = async({ idSocket, token }) => {
+        const responseLobby = await serverControl.findLobby()
+
+        if (responseLobby.error) { return { error: { msg: "Lobby not found", system: true }, status: 404 } }
+
+        const responseConnectServer = await userConnectServer({ _id: responseLobby.server._id, idSocket, token })
+
+        return responseConnectServer
+    }
+
     // DaoUser
     const register = async({ username = "", email = "", password = "", online = false, serverConnected = null, level = 0, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null, idSocket = null }) => {
         const response = await userDao.register({ username, email, password, online, serverConnected, level, xp, xpUpLevel, recordPoints, admin, idSocket })
@@ -615,11 +653,12 @@ export default function UserControl() {
         userForgotPassword,
         userResetPassword,
         selectUser,
-        userConnectServer,
         queryUser,
         listUsers,
+        listUsersOnline,
         EUserDisconnect,
         EUserConnect,
-        listUsersOnline,
+        EUserStartGame,
+        EUserQuitGame,
     }
 }

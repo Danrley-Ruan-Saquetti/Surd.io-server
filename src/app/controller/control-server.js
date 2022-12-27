@@ -7,14 +7,14 @@ export default function ServerControl() {
     const chatControl = ChatControl()
 
     // Use Cases
-    const createServer = async({ name, lobby = false, token }) => {
+    const createServer = async({ name, isLobby = false, token }) => {
         if (!name) { return { erros: { msg: "Name undefined", name: true }, status: 400 } }
 
         const responseName = await findByName({ name })
 
         if (responseName.server) { return { erros: { msg: "Name already exist", name: true }, status: 400 } }
 
-        const response = await register({ name, lobby })
+        const response = await register({ name, isLobby })
 
         if (response.error) { return { erros: { msg: "Cannot create server", system: true }, status: 400 } }
 
@@ -43,15 +43,15 @@ export default function ServerControl() {
         const { servers } = response
 
         servers.forEach(server => {
-            server.lobby = undefined
+            server.isLobby = undefined
         })
 
         return { servers, status: 200 }
     }
 
     // Dao
-    const register = async({ name = "", lobby = false }) => {
-        const response = await serverDao.register({ name, lobby })
+    const register = async({ name = "", isLobby = false }) => {
+        const response = await serverDao.register({ name, isLobby })
 
         return response
     }

@@ -35,5 +35,5 @@ export const RULES_SERVER = {
 }
 
 export const RULES_POST = {
-    LIMIT_LIST: 15
+    LIMIT_LIST: 20
 }

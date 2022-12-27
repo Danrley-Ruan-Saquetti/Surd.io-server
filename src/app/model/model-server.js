@@ -5,7 +5,7 @@ const ServerSchema = mongoose.Schema({
         type: String,
         require: true
     },
-    lobby: {
+    isLobby: {
         type: Boolean,
         default: false
     },

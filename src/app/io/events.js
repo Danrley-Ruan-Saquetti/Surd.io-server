@@ -458,4 +458,60 @@ io.on("connection", async(socket) => {
             socketEmit({ ev: "friends/pending/awaiting/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
         }
     })
+
+    // Server
+    socket.on("servers", async(req) => {
+        try {
+            const { authToken } = req
+
+            const response = await serverControl.listServers({ idSocket, token: authToken })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "servers/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "servers/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
+        }
+    })
+
+    // Game
+    socket.on("games/start", async(req) => {
+        try {
+            const { idServer, authToken } = req
+
+            const response = await userControl.EUserStartGame({ _id: idServer, idSocket, token: authToken })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "games/start/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "games/start/res", data: { error: { msg: "Cannot connect server, try again", system: true } } })
+        }
+    })
+
+    socket.on("games/quit", async(req) => {
+        try {
+            const { authToken } = req
+
+            const response = await userControl.EUserQuitGame({ idSocket, token: authToken })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "games/quit/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "games/quit/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
+        }
+    })
 })
