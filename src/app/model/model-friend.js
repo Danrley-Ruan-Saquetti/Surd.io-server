@@ -6,6 +6,11 @@ const FriendSchema = mongoose.Schema({
         ref: "User",
         require: true
     }],
+    idChat: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Chat",
+        default: null
+    },
     pending: {
         type: Boolean,
         default: true

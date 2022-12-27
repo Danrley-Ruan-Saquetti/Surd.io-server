@@ -14,6 +14,7 @@ export const getSockets = async() => {
 
         return { sockets: res }
     }).catch(error => {
+        console.log(error);
         return { error }
     })
 

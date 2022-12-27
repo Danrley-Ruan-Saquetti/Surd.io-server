@@ -1,8 +1,8 @@
 import Chat from "./model-chat.js"
 
 export default function ChatDao() {
-    const register = async({ idServer = null, isServer = false, users = null }) => {
-        const response = await Chat.create({ idServer, isServer, users }).then(async(res) => {
+    const register = async({ idServer = null, isServer = false, idFriend = null }) => {
+        const response = await Chat.create({ idServer, isServer, idFriend }).then(async(res) => {
             return { chat: res }
         }).catch(res => {
             return { error: res }
@@ -41,6 +41,16 @@ export default function ChatDao() {
         return response
     }
 
+    const findByFriend = async({ idFriend }) => {
+        const response = await Chat.findOne({ idFriend }).then(async(res) => {
+            return { chat: res }
+        }).catch(res => {
+            return { error: res }
+        })
+
+        return response
+    }
+
     const findByUser = async({ user }) => {
         const response = await Chat.findOne({ users: user }).then(async(res) => {
             return { chat: res }
@@ -67,6 +77,7 @@ export default function ChatDao() {
         findById,
         findByServer,
         findByUser,
-        findByUsers
+        findByUsers,
+        findByFriend
     }
 }

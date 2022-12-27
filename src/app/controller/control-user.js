@@ -7,12 +7,14 @@ import PostControl from "./control-post.js"
 import { generatedToken, validToken } from "../util/token.service.js"
 import { RULES_USER } from "../business-rule/rules.js"
 import { ioEmit, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
+import FriendDao from "../model/dao-friend.js"
 
 export default function UserControl() {
     const userDao = UserDao()
     const serverControl = ServerControl()
     const adminControl = AdminControl()
     const postControl = PostControl()
+    const friendDao = FriendDao()
 
     const verifyValuesAlreadyExists = async({ username, email, _id = null }) => {
         const error = []
@@ -121,7 +123,7 @@ export default function UserControl() {
         await user.save()
 
         if (!isAdmin) {
-            ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
+            ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${user.serverConnected}` })
 
             user.password = undefined
             user.passwordResetToken = undefined
@@ -417,18 +419,46 @@ export default function UserControl() {
 
         if (response.error) { return { error: { msg: "Cannot get users", system: true }, status: 401 } }
 
-        const { users } = response
+        const { users: us } = response
 
-        users.forEach(user => {
-            user.password = undefined
-            user.passwordResetToken = undefined
-            user.passwordResetExpires = undefined
-            user.authToken = undefined
-            user.idAdmin = undefined
-            user.email = undefined
-            user.idSocket = undefined
-            user.lastToken = undefined
-        });
+        const users = []
+
+        for (let i = 0; i < us.length; i++) {
+            const u = us[i]
+
+            let responseFriendship = { error: null, friendship: null }
+
+            let j = 0
+            do {
+                responseFriendship = j == 0 ? await friendDao.findFriendshipByUsers({ users: [user._id, u._id] }) : await friendDao.findFriendshipByUsers({ users: [u._id, user._id] })
+                j++
+            } while (j < 2 && !responseFriendship.friendship);
+
+            const friend = {
+                isInvited: !(!responseFriendship.friendship),
+                isPending: responseFriendship.friendship ? responseFriendship.friendship.pending : null,
+                isFriend: responseFriendship.friendship ? responseFriendship.friendship.accepted : null,
+                to: responseFriendship.friendship ? responseFriendship.friendship.to : null,
+                from: responseFriendship.friendship ? responseFriendship.friendship.from : null,
+                _id: responseFriendship.friendship && responseFriendship.friendship._id
+            }
+
+            const _user = {
+                username: u.username,
+                _id: u._id,
+                level: u.level,
+                xp: u.xp,
+                xpLevelUp: u.xpLevelUp,
+                serverConnected: u.serverConnected,
+                __v: u.__v,
+                recordPoints: u.recordPoints,
+                lastTimeOnline: u.lastTimeOnline,
+                createAt: u.createAt,
+                friend
+            }
+
+            users.push(_user)
+        }
 
         return { users, status: 200 }
     }
@@ -438,22 +468,47 @@ export default function UserControl() {
 
         if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
 
+        const { user } = tokenValid
+
         const response = await findUsersOnline()
 
         if (response.error) { return { error: { msg: "Cannot get users", system: true }, status: 401 } }
 
-        const { users } = response
+        const { users: us } = response
 
-        users.forEach(user => {
-            user.password = undefined
-            user.passwordResetToken = undefined
-            user.passwordResetExpires = undefined
-            user.authToken = undefined
-            user.idAdmin = undefined
-            user.email = undefined
-            user.idSocket = undefined
-            user.lastToken = undefined
-        });
+        const users = []
+
+        for (let i = 0; i < us.length; i++) {
+            const u = us[i]
+
+            const responseFriendship = await friendDao.findFriendshipByUsers({ users: [user._id, u._id] })
+
+            console.log({ user: user._id, friend: responseFriendship.friendship || null });
+
+            const friend = {
+                isInvited: !responseFriendship.error,
+                isPending: responseFriendship.friendship ? responseFriendship.friendship.pending : null,
+                isFriend: responseFriendship.friendship ? responseFriendship.friendship.accepted : null,
+                to: responseFriendship.friendship ? responseFriendship.friendship.to : null,
+                from: responseFriendship.friendship ? responseFriendship.friendship.from : null
+            }
+
+            const _user = {
+                username: u.username,
+                _id: u._id,
+                level: u.level,
+                xp: u.xp,
+                xpLevelUp: u.xpLevelUp,
+                serverConnected: u.serverConnected,
+                __v: u.__v,
+                recordPoints: u.recordPoints,
+                lastTimeOnline: u.lastTimeOnline,
+                createAt: u.createAt,
+                friend
+            }
+
+            users.push(_user)
+        }
 
         return { users, status: 200 }
     }

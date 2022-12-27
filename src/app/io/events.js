@@ -230,9 +230,9 @@ io.on("connection", async(socket) => {
     // Post
     socket.on("chat", async(req) => {
         try {
-            const { authToken, idChat } = req
+            const { authToken } = req
 
-            const response = await postControl.listPosts({ idChat, idSocket, token: authToken })
+            const response = await postControl.listPosts({ idSocket, token: authToken })
 
             response.valueOf = undefined
             response.status = undefined
@@ -244,11 +244,27 @@ io.on("connection", async(socket) => {
         }
     })
 
+    socket.on("chat/private", async(req) => {
+        try {
+            const { authToken, idChat } = req
+
+            const response = await postControl.listPosts({ idChat, idSocket, token: authToken })
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "chat/private/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "chat/private/res", data: { error: { msg: "Cannot operation reset password", system: true } } })
+        }
+    })
+
     socket.on("chat/send-post", async(req) => {
         try {
-            const { body, authToken, idChat } = req
+            const { body, authToken } = req
 
-            const response = await postControl.userSendPost({ idSocket, token: authToken, body, idChat })
+            const response = await postControl.userSendPost({ idSocket, token: authToken, body })
 
             const { status } = response
 
@@ -262,8 +278,26 @@ io.on("connection", async(socket) => {
         }
     })
 
+    socket.on("chat/private/send-post", async(req) => {
+        try {
+            const { body, authToken, idChat } = req
+
+            const response = await postControl.userSendPost({ idSocket, token: authToken, body, idChat })
+
+            const { status } = response
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "chat/private/send-post/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "chat/private/send-post/res", data: { error: { msg: "Cannot send post", system: true } } })
+        }
+    })
+
     // Friend
-    socket.on("friend", async(req) => {
+    socket.on("friends", async(req) => {
         try {
             const { authToken } = req
 
@@ -274,14 +308,14 @@ io.on("connection", async(socket) => {
             response.valueOf = undefined
             response.status = undefined
 
-            socketEmit({ ev: "friend/res", data: response })
+            socketEmit({ ev: "friends/res", data: response })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "friend/res", data: { error: { msg: "Cannot get friends", system: true } } })
+            socketEmit({ ev: "friends/res", data: { error: { msg: "Cannot get friends", system: true } } })
         }
     })
 
-    socket.on("friend/send-invite", async(req) => {
+    socket.on("friends/send-invite", async(req) => {
         try {
             const { authToken, _id } = req
 
@@ -292,14 +326,14 @@ io.on("connection", async(socket) => {
             response.valueOf = undefined
             response.status = undefined
 
-            socketEmit({ ev: "friend/send-invite/res", data: response })
+            socketEmit({ ev: "friends/send-invite/res", data: response })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "friend/send-invite/res", data: { error: { msg: "Cannot send invite", system: true } } })
+            socketEmit({ ev: "friends/send-invite/res", data: { error: { msg: "Cannot send invite", system: true } } })
         }
     })
 
-    socket.on("friend/accept-invite", async(req) => {
+    socket.on("friends/accept-invite", async(req) => {
         try {
             const { authToken, _id } = req
 
@@ -310,14 +344,14 @@ io.on("connection", async(socket) => {
             response.valueOf = undefined
             response.status = undefined
 
-            socketEmit({ ev: "friend/accept-invite/res", data: response })
+            socketEmit({ ev: "friends/accept-invite/res", data: response })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "friend/accept-invite/res", data: { error: { msg: "Cannot accept invite", system: true } } })
+            socketEmit({ ev: "friends/accept-invite/res", data: { error: { msg: "Cannot accept invite", system: true } } })
         }
     })
 
-    socket.on("friend/denied-invite", async(req) => {
+    socket.on("friends/denied-invite", async(req) => {
         try {
             const { authToken, _id } = req
 
@@ -328,14 +362,14 @@ io.on("connection", async(socket) => {
             response.valueOf = undefined
             response.status = undefined
 
-            socketEmit({ ev: "friend/denied-invite/res", data: response })
+            socketEmit({ ev: "friends/denied-invite/res", data: response })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "friend/denied-invite/res", data: { error: { msg: "Cannot denied invite", system: true } } })
+            socketEmit({ ev: "friends/denied-invite/res", data: { error: { msg: "Cannot denied invite", system: true } } })
         }
     })
 
-    socket.on("friend/cancel-invite", async(req) => {
+    socket.on("friends/cancel-invite", async(req) => {
         try {
             const { authToken, _id } = req
 
@@ -346,14 +380,14 @@ io.on("connection", async(socket) => {
             response.valueOf = undefined
             response.status = undefined
 
-            socketEmit({ ev: "friend/cancel-invite/res", data: response })
+            socketEmit({ ev: "friends/cancel-invite/res", data: response })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "friend/cancel-invite/res", data: { error: { msg: "Cannot cancel invite", system: true } } })
+            socketEmit({ ev: "friends/cancel-invite/res", data: { error: { msg: "Cannot cancel invite", system: true } } })
         }
     })
 
-    socket.on("friend/remove-friendship", async(req) => {
+    socket.on("friends/remove-friendship", async(req) => {
         try {
             const { authToken, _id } = req
 
@@ -364,14 +398,14 @@ io.on("connection", async(socket) => {
             response.valueOf = undefined
             response.status = undefined
 
-            socketEmit({ ev: "friend/remove-friendship/res", data: response })
+            socketEmit({ ev: "friends/remove-friendship/res", data: response })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "friend/remove-friendship/res", data: { error: { msg: "Cannot remove friendship", system: true } } })
+            socketEmit({ ev: "friends/remove-friendship/res", data: { error: { msg: "Cannot remove friendship", system: true } } })
         }
     })
 
-    socket.on("friend/pending/on-hold", async(req) => {
+    socket.on("friends/pending/on-hold", async(req) => {
         try {
             const { authToken } = req
 
@@ -382,14 +416,14 @@ io.on("connection", async(socket) => {
             response.valueOf = undefined
             response.status = undefined
 
-            socketEmit({ ev: "friend/pending/on-hold/res", data: response })
+            socketEmit({ ev: "friends/pending/on-hold/res", data: response })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "friend/pending/on-hold/res", data: { error: { msg: "Cannot get invites", system: true } } })
+            socketEmit({ ev: "friends/pending/on-hold/res", data: { error: { msg: "Cannot get invites", system: true } } })
         }
     })
 
-    socket.on("friend/pending/awaiting", async(req) => {
+    socket.on("friends/pending/awaiting", async(req) => {
         try {
             const { authToken } = req
 
@@ -400,14 +434,14 @@ io.on("connection", async(socket) => {
             response.valueOf = undefined
             response.status = undefined
 
-            socketEmit({ ev: "friend/pending/awaiting/res", data: response })
+            socketEmit({ ev: "friends/pending/awaiting/res", data: response })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "friend/pending/awaiting/res", data: { error: { msg: "Cannot get invites", system: true } } })
+            socketEmit({ ev: "friends/pending/awaiting/res", data: { error: { msg: "Cannot get invites", system: true } } })
         }
     })
 
-    socket.on("friend/denied", async(req) => {
+    socket.on("friends/denied", async(req) => {
         try {
             const { authToken } = req
 
@@ -418,10 +452,10 @@ io.on("connection", async(socket) => {
             response.valueOf = undefined
             response.status = undefined
 
-            socketEmit({ ev: "friend/pending/awaiting/res", data: response })
+            socketEmit({ ev: "friends/pending/awaiting/res", data: response })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "friend/pending/awaiting/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
+            socketEmit({ ev: "friends/pending/awaiting/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
         }
     })
 })

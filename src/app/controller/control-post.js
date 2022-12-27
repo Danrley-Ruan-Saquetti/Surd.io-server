@@ -1,13 +1,15 @@
 import PostDao from "../model/dao-post.js"
 import ChatDao from "../model/dao-chat.js"
 import UserDao from "../model/dao-user.js"
+import FriendDao from "../model/dao-friend.js"
 import { validToken } from "../util/token.service.js"
-import { ioEmit } from "../io/io.js"
+import { ioEmit, getSocket } from "../io/io.js"
 
 export default function PostControl() {
     const postDao = PostDao()
     const chatDao = ChatDao()
     const userDao = UserDao()
+    const friendDao = FriendDao()
 
     const register = async({ body = "", isServer = false, idChat = null, idServer = null, user = null, info = false }) => {
         if (!body) { return { error: { msg: "Inform the body of post", body: true }, status: 400 } }
@@ -24,7 +26,20 @@ export default function PostControl() {
 
         const { post } = response
 
-        isServer && ioEmit({ data: { post }, ev: "$/chat/send-post", room: idServer })
+        if (isServer) {
+            ioEmit({ data: { post }, ev: "$/chat/send-post", room: idServer })
+        } else {
+            const responseFriend = await friendDao.findFriendshipById({ _id: chat.idFriend })
+
+            const responseUser1 = responseFriend.friendship ? await userDao.findById(responseFriend.friendship.users[0]) : { error: {} }
+            const responseUser2 = responseFriend.friendship ? await userDao.findById(responseFriend.friendship.users[1]) : { error: {} }
+
+            const responseSocket1 = responseUser1.user ? await getSocket(responseUser1.user.idSocket) : { valueOf: false }
+            const responseSocket2 = responseUser2.user ? await getSocket(responseUser2.user.idSocket) : { valueOf: false }
+
+            responseSocket1.valueOf && responseSocket1.socket.emit("$/chat/private/send-post", { msg: "User send post" })
+            responseSocket2.valueOf && responseSocket2.socket.emit("$/chat/private/send-post", { msg: "User send post" })
+        }
 
         return { post, status: 200 }
     }
@@ -61,7 +76,7 @@ export default function PostControl() {
 
         const { posts } = responsePosts
 
-        for (let i = 0; i < posts.length; i++) {
+        for (let i = posts.length - 1; i >= 0; i--) {
             if (!posts[i].user) { continue }
 
             const responseUser = await userDao.findById({ _id: posts[i].user })
@@ -84,6 +99,8 @@ export default function PostControl() {
             posts[i].chat = undefined
             posts[i].user = user
         }
+
+        posts.reverse()
 
         return { posts, status: 200 }
     }

@@ -22,6 +22,16 @@ export default function FriendDao() {
         return response
     }
 
+    const findFriendshipByChat = async({ idChat }) => {
+        const response = await Friend.findOne({ idChat }).then(async(res) => {
+            return { friendship: res }
+        }).catch(res => {
+            return { error: res }
+        })
+
+        return response
+    }
+
     const findFriendshipById = async({ _id }) => {
         const response = await Friend.findById(_id).then(async(res) => {
             return { friendship: res }
@@ -80,5 +90,6 @@ export default function FriendDao() {
         findInvitesPendingOnHold,
         findInvitesPendingAwaiting,
         findInvitesDeniedByUser,
+        findFriendshipByChat,
     }
 }

@@ -10,11 +10,11 @@ const ChatSchema = mongoose.Schema({
         type: Boolean,
         default: true
     },
-    users: [{
+    idFriend: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: "Friend",
         default: null
-    }],
+    },
     createAt: {
         type: Date,
         default: Date.now
