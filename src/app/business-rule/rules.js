@@ -30,6 +30,10 @@ export const RULES_USER = {
     }
 }
 
+export const RULES_SERVER = {
+    LIMIT_PLAYERS: 250
+}
+
 export const RULES_POST = {
     LIMIT_LIST: 15
 }

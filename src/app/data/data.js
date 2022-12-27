@@ -15,7 +15,11 @@ export default async function Data() {
         servers.forEach(async(s) => {
             const responseServer = await serverDao.findByName(s)
 
-            if (responseServer.server) { return }
+            if (responseServer.server) {
+                responseServer.server.playersOnline = 0
+                await responseServer.server.save()
+                return
+            }
 
             const responseRegisterServer = await serverDao.register(s)
 

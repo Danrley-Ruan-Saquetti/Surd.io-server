@@ -5,7 +5,7 @@ import ServerControl from "./control-server.js"
 import AdminControl from "./control-admin.js"
 import PostControl from "./control-post.js"
 import { generatedToken, validToken } from "../util/token.service.js"
-import { RULES_USER } from "../business-rule/rules.js"
+import { RULES_SERVER, RULES_USER } from "../business-rule/rules.js"
 import { ioEmit, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
 import FriendDao from "../model/dao-friend.js"
 
@@ -117,6 +117,9 @@ export default function UserControl() {
             user.online = true
             user.serverConnected = server._id
 
+            server.playersOnline++
+                await server.save()
+
             postControl.systemSendPost({ body: `User ${username} connected`, idServer: user.serverConnected })
         }
 
@@ -181,6 +184,9 @@ export default function UserControl() {
 
         await user.save()
 
+        server.playersOnline++
+            await server.save()
+
         ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
 
         user.password = undefined
@@ -233,6 +239,9 @@ export default function UserControl() {
 
         await user.save()
 
+        server.playersOnline++
+            await server.save()
+
         ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
 
         user.password = undefined
@@ -270,6 +279,11 @@ export default function UserControl() {
 
         await user.save()
 
+        const responseServer = await serverControl.findById({ _id: serverConnected })
+
+        responseServer.server && responseServer.server.playersOnline--
+            responseServer.server && await responseServer.server.save()
+
         ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} disconnected` }, room: `${serverConnected}` })
 
         const responseSocket = await socketLeaveRoom({ idSocket })
@@ -287,6 +301,11 @@ export default function UserControl() {
         if (!authValid.valueOf) { return authValid }
 
         const { user } = authValid
+
+        const responseOldServer = await serverControl.findById({ _id: user.serverConnected })
+
+        responseOldServer.server && responseOldServer.playersOnline--
+            responseOldServer.server && await responseOldServer.save()
 
         await user.remove()
 
@@ -346,17 +365,27 @@ export default function UserControl() {
 
         if (user.idSocket != idSocket) { return { error: { msg: "Host not connected", system: true }, status: 401 } }
 
+        const responseOldServer = await serverControl.findById({ _id: user.serverConnected })
+
         const responseServer = await serverControl.findById({ _id })
 
-        if (!responseServer.server) { return { error: { msg: "Cannot connect lobby, try again", system: true }, status: 401 } }
+        if (!responseServer.server) { return { error: { msg: "Cannot connect server, try again", system: true }, status: 401 } }
 
         const { server } = responseServer
+
+        if (!server.lobby && server.playersOnline > RULES_SERVER.LIMIT_PLAYERS) { return { error: { msg: "Server full", system: true }, status: 401 } }
 
         user.serverConnected = server._id
 
         postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: user.serverConnected })
 
         await user.save()
+
+        server.playersOnline++
+            await server.save()
+
+        responseOldServer.server && responseOldServer.playersOnline--
+            responseOldServer.server && await responseOldServer.save()
 
         ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
 

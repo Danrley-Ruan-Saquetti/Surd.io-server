@@ -1,8 +1,8 @@
 import Server from "./model-server.js"
 
 export default function ServerDao() {
-    const register = async({ name = "", lobby = false }) => {
-        const response = await Server.create({ name, lobby }).then(async(res) => {
+    const register = async({ name = "", lobby = false, playersOnline = 0 }) => {
+        const response = await Server.create({ name, lobby, playersOnline }).then(async(res) => {
             return { server: res }
         }).catch(res => {
             return { error: res }
