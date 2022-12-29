@@ -9,7 +9,7 @@ const userDao = UserDao()
 const postDao = PostDao()
 
 export default async function Data() {
-    const servers = [{ name: "Server A", isLobby: false }, { name: "Server B", isLobby: false }, { name: "Server C", isLobby: false }, { name: "Server D", isLobby: false }, { name: "Server E", isLobby: false }, { name: "isLobby", isLobby: true }]
+    const servers = [{ name: "Server A", isLobby: false }, { name: "Server B", isLobby: false }, { name: "Server C", isLobby: false }, { name: "Server D", isLobby: false }, { name: "Server E", isLobby: false }, { name: "Lobby", isLobby: true }]
 
     const serverData = () => {
         servers.forEach(async(s) => {

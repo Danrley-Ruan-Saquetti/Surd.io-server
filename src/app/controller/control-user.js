@@ -5,7 +5,7 @@ import ServerControl from "./control-server.js"
 import AdminControl from "./control-admin.js"
 import PostControl from "./control-post.js"
 import { generatedToken, validToken } from "../util/token.service.js"
-import { RULES_SERVER, RULES_USER } from "../business-rule/rules.js"
+import { RULES_USER } from "../business-rule/rules.js"
 import { getSocket, ioEmit, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
 import FriendDao from "../model/dao-friend.js"
 
@@ -64,6 +64,106 @@ export default function UserControl() {
         return { user, error: [], valueOf: true }
     }
 
+    const connectServer = async({ _id, user }) => {
+        const responseOldServer = user.serverConnected ? await serverControl.findById({ _id: user.serverConnected }) : { error: {} }
+
+        const responseServer = await serverControl.findById({ _id })
+
+        if (!responseServer.server) { return { error: { msg: "Cannot connect server, try again", system: true }, status: 401 } }
+
+        if (responseOldServer.server) {
+            const { server } = responseOldServer
+
+            server.playersOnline--
+
+                await server.save()
+
+            console.log(server);
+
+            responseOldServer.server && await postControl.systemSendPost({ body: "User " + user.username + (!server.isLobby ? " leave" : " enter " + responseServer.server.name), idServer: server._id })
+
+            ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} leave` }, room: `${server._id}` })
+        }
+
+        const { server } = responseServer
+
+        user.serverConnected = server
+
+        await user.save()
+
+        const { idSocket } = user
+
+        user.password = undefined
+        user.passwordResetToken = undefined
+        user.passwordResetExpires = undefined
+        user.idSocket = undefined
+        user.lastToken = undefined
+
+        if (!user.idAdmin) {
+            user.idAdmin = undefined
+        }
+
+        server.playersOnline++
+
+            await server.save()
+
+        const responseSocket = await getSocket(idSocket)
+
+        await postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: server._id })
+
+        responseSocket.valueOf && await socketJoinRoom({ idSocket, keyRoom: server._id })
+
+        responseSocket.valueOf && responseSocket.socket.emit("$/users/current/update", { msg: "User enter server", user })
+
+        ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
+
+        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} connect room {${server._id}}`);
+
+        return { success: { msg: "User connected server successfully", system: true }, status: 200, user }
+    }
+
+    const userConnectServer = async({ _id, token, idSocket }) => {
+        const authValid = await validToken(token, idSocket)
+
+        if (!authValid.valueOf) { return authValid }
+
+        const { user } = authValid
+
+        if (user.idSocket != idSocket) { return { error: { msg: "Host not connected", system: true }, status: 401 } }
+
+        const responseConnectServer = await connectServer({ _id, user })
+
+        if (responseConnectServer.error) { return responseConnectServer }
+
+        return { success: { msg: "Server connected successfully", system: true }, status: 200 }
+    }
+
+    const userConnected = async({ user, idSocket, msg, action }) => {
+        const responseLobby = await serverControl.findLobby()
+
+        if (!responseLobby.server) { return { error: { msg: "Cannot connect lobby, try again", system: true }, status: 401 } }
+
+        const { server } = responseLobby
+
+        const token = generatedToken({ id: user, admin: user.idAdmin })
+
+        user.authToken = token
+        user.lastToken = token
+        user.online = true
+        user.idSocket = idSocket
+        user.lastTimeOnline = Date.now()
+
+        await user.save()
+
+        const responseConnectServer = await connectServer({ _id: server._id, user })
+
+        if (responseConnectServer.error) { return responseConnectServer }
+
+        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} ${action}`);
+
+        return { user: responseConnectServer.user, success: { msg, system: true }, status: 200 }
+    }
+
     // Use Cases
     const userRegister = async({ username = "", email = "", password = "", isAdmin = false, tokenAdmin = null, idSocket }) => {
         const responseSocket = await findByIdSocket({ idSocket })
@@ -96,46 +196,17 @@ export default function UserControl() {
             const { admin } = responseAdmin
 
             user.idAdmin = admin._id
+
+            await user.save()
+
+            console.log(`[IO] Admin => {${user._id}} Host => {${idSocket}} registered`);
+
+            return { success: { msg: "Admin created successfully", system: true }, status: 200 }
         } else {
-            const responseLobby = await serverControl.findLobby()
+            const responseUserConnect = await userConnected({ user, idSocket, msg: "User created successfully", action: "registered" })
 
-            if (!responseLobby.server) { return { success: { msg: "User created successfully", system: true }, error: { msg: "Cannot connect lobby", system: true }, warning: { msg: "Please, effect login", system: true } } }
-
-            const { server } = responseLobby
-
-            const responseSocket = await socketJoinRoom({ idSocket, keyRoom: server._id })
-
-            if (!responseSocket.valueOf) { return { user, success: { msg: "User created successfully", system: true }, error: { msg: "Cannot connect lobby", system: true }, warning: { msg: "Please, effect login", system: true } } }
-
-            const token = generatedToken({ _id: user._id })
-
-            user.idSocket = idSocket
-            user.authToken = token
-            user.lastToken = token
-            user.online = true
-            user.serverConnected = server._id
-
-            server.playersOnline++
-                await server.save()
-
-            postControl.systemSendPost({ body: `User ${username} connected`, idServer: user.serverConnected })
+            return responseUserConnect
         }
-
-        await user.save()
-
-        if (!isAdmin) {
-            ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${user.serverConnected}` })
-
-            user.password = undefined
-            user.passwordResetToken = undefined
-            user.passwordResetExpires = undefined
-            user.idSocket = undefined
-            user.lastToken = undefined
-        }
-
-        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} registered`);
-
-        return { user: !isAdmin ? user : undefined, success: { msg: "User created successfully", system: true }, status: 200 }
     }
 
     const userLogin = async({ login = "", password = "", idSocket }) => {
@@ -158,47 +229,9 @@ export default function UserControl() {
 
         if (user.online) { return { error: { msg: "User already logged in this moment", system: true }, status: 401 } }
 
-        const responseLobby = await serverControl.findLobby()
+        const responseUserConnect = await userConnected({ user, idSocket, msg: "User logged successfully", action: "logged" })
 
-        if (!responseLobby.server) { return { error: { msg: "Cannot connect lobby, try again", system: true }, status: 401 } }
-
-        const { server } = responseLobby
-
-        const responseSocket = await socketJoinRoom({ idSocket, keyRoom: server._id })
-
-        if (!responseSocket.valueOf) { return { error: { msg: "Cannot connect lobby. Please, try again", system: true }, status: 401 } }
-
-        const token = generatedToken({ id: user, admin: user.idAdmin })
-
-        user.authToken = token
-        user.lastToken = token
-        user.online = true
-        user.serverConnected = server._id
-        user.idSocket = idSocket
-        user.lastTimeOnline = Date.now()
-
-        const responsePost = await postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: user.serverConnected })
-
-        await user.save()
-
-        server.playersOnline++
-            await server.save()
-
-        ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
-
-        user.password = undefined
-        user.passwordResetToken = undefined
-        user.passwordResetExpires = undefined
-        user.idSocket = undefined
-        user.lastToken = undefined
-
-        if (!user.idAdmin) {
-            user.idAdmin = undefined
-        }
-
-        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} logged`);
-
-        return { user, success: { msg: "User logged successfully", system: true }, status: 200 }
+        return responseUserConnect
     }
 
     const userReconnect = async({ _id, idSocket, token: t }) => {
@@ -212,47 +245,9 @@ export default function UserControl() {
 
         if (user.online) { return { error: { msg: "User already logged in this moment", system: true }, status: 401 } }
 
-        const responseLobby = await serverControl.findLobby()
+        const responseUserConnect = await userConnected({ user, idSocket, msg: "User reconnected successfully", action: "reconnected" })
 
-        if (!responseLobby.server) { return { error: { msg: "Cannot connect lobby, try again", system: true }, status: 401 } }
-
-        const { server } = responseLobby
-
-        const responseSocket = await socketJoinRoom({ idSocket, keyRoom: server._id })
-
-        if (!responseSocket.valueOf) { return { error: { msg: "Cannot connect lobby. Please, try again", system: true }, status: 401 } }
-
-        const token = generatedToken({ id: user, admin: user.idAdmin })
-
-        user.authToken = token
-        user.lastToken = token
-        user.online = true
-        user.serverConnected = server._id
-        user.idSocket = idSocket
-        user.lastTimeOnline = Date.now()
-
-        const responsePost = await postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: user.serverConnected })
-
-        await user.save()
-
-        server.playersOnline++
-            await server.save()
-
-        ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
-
-        user.password = undefined
-        user.passwordResetToken = undefined
-        user.passwordResetExpires = undefined
-        user.idSocket = undefined
-        user.lastToken = undefined
-
-        if (!user.idAdmin) {
-            user.idAdmin = undefined
-        }
-
-        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} reconnected`);
-
-        return { user, success: { msg: "User reconnected successfully", system: true }, status: 200 }
+        return responseUserConnect
     }
 
     const userLogout = async({ token, idSocket }) => {
@@ -264,7 +259,7 @@ export default function UserControl() {
 
         const { serverConnected } = user
 
-        postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
+        await postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
 
         user.online = false
         user.lastTimeOnline = Date.now()
@@ -297,10 +292,26 @@ export default function UserControl() {
 
         const { user } = authValid
 
-        const responseOldServer = await serverControl.findById({ _id: user.serverConnected })
+        const responseServer = await serverControl.findById({ _id: user.serverConnected })
 
-        responseOldServer.server && responseOldServer.playersOnline--
-            responseOldServer.server && await responseOldServer.save()
+        responseServer.server && responseServer.playersOnline--
+            responseServer.server && await responseServer.save()
+
+        const responseFriends = await friendDao.findFriendsByIdUser({ _id: user._id })
+
+        if (responseFriends.friends) {
+            for (let i = 0; i < responseFriends.friends.length; i++) {
+                const _id = responseFriends.friends.users[responseFriends.friends.users[0] != user._id ? 0 : 1]
+
+                const responseFriend = await findById({ _id })
+
+                const responseSocket = responseFriend.user ? await getSocket({ idSocket: responseFriend.user.idSocket }) : { valueOf: false }
+
+                await responseFriends.friends[i].remove()
+
+                responseSocket.valueOf && responseSocket.socket.emit("$/friends/remove-friendship", { msg: "User deleted" })
+            }
+        }
 
         await user.remove()
 
@@ -349,69 +360,6 @@ export default function UserControl() {
         await user.save()
 
         return { success: { msg: "Reset password successfully", system: true }, status: 200 }
-    }
-
-    const userConnectServer = async({ _id, token, idSocket }) => {
-        const authValid = await validToken(token, idSocket)
-
-        if (!authValid.valueOf) { return authValid }
-
-        const { user } = authValid
-
-        if (user.idSocket != idSocket) { return { error: { msg: "Host not connected", system: true }, status: 401 } }
-
-        const responseOldServer = await serverControl.findById({ _id: user.serverConnected })
-
-        const responseServer = await serverControl.findById({ _id })
-
-        if (!responseServer.server) { return { error: { msg: "Cannot connect server, try again", system: true }, status: 401 } }
-
-        const { server } = responseServer
-
-        if (!server.isLobby && server.playersOnline > RULES_SERVER.LIMIT_PLAYERS) { return { error: { msg: "Server full", system: true }, status: 401 } }
-
-        user.serverConnected = server._id
-
-        await user.save()
-
-        server.playersOnline++
-
-            await server.save()
-
-        responseOldServer.server && responseOldServer.server.playersOnline--
-            responseOldServer.server && await responseOldServer.server.save()
-
-        const responseSocket = await getSocket(user.idSocket)
-
-        user.password = undefined
-        user.passwordResetToken = undefined
-        user.passwordResetExpires = undefined
-        user.idSocket = undefined
-        user.lastToken = undefined
-
-        if (!user.idAdmin) {
-            user.idAdmin = undefined
-        }
-
-        if (!server.isLobby) {
-            responseOldServer.server && postControl.systemSendPost({ body: `User ${user.username} enter ${server.name}`, idServer: responseOldServer.server._id })
-        } else {
-            responseOldServer.server && postControl.systemSendPost({ body: `User ${user.username} leave`, idServer: responseOldServer.server._id })
-        }
-
-        responseSocket.socket && socketJoinRoom({ idSocket, keyRoom: user.serverConnected })
-
-        responseSocket.valueOf && responseSocket.socket.emit("$/users/current/update", { msg: "Update current user", user })
-
-        postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: server._id })
-
-        ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
-
-        !server.isLobby && responseOldServer.server && ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} enter ${server.name}` }, room: `${responseOldServer.server._id}` })
-
-        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} connect room {${_id}}`);
-
-        return { success: { msg: "Server connected successfully", system: true }, status: 200 }
     }
 
     const queryUser = async({ username = "", token, idSocket }) => {
@@ -581,7 +529,7 @@ export default function UserControl() {
 
         await user.save()
 
-        postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
+        await postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
 
         ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} disconnected` }, room: `${user.serverConnected}` })
 
