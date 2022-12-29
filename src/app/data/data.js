@@ -54,7 +54,7 @@ export default async function Data() {
     userData()
     postData()
 
-    const responseServers = await serverDao.list()
+    const responseServers = await serverDao.listAll()
 
     responseServers.servers && responseServers.servers.forEach(async(server) => {
         const responseChats = await chatDao.findByServer({ idServer: server._id })

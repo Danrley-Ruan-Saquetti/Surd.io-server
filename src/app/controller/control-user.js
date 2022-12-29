@@ -78,8 +78,6 @@ export default function UserControl() {
 
                 await server.save()
 
-            console.log(server);
-
             responseOldServer.server && await postControl.systemSendPost({ body: "User " + user.username + (!server.isLobby ? " leave" : " enter " + responseServer.server.name), idServer: server._id })
 
             ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} leave` }, room: `${server._id}` })

@@ -21,6 +21,16 @@ export default function ServerDao() {
         return response
     }
 
+    const listAll = async() => {
+        const response = await Server.find().then(async(res) => {
+            return { servers: res }
+        }).catch(res => {
+            return { error: res }
+        })
+
+        return response
+    }
+
     const findById = async({ _id }) => {
         const response = await Server.findById(_id).then(async(res) => {
             return { server: res }
@@ -54,6 +64,7 @@ export default function ServerDao() {
     return {
         register,
         list,
+        listAll,
         findById,
         findByName,
         findLobby,
