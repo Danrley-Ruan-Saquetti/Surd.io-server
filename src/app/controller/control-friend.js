@@ -231,7 +231,7 @@ export default function FriendControl() {
                 u.idAdmin = undefined
             }
 
-            users.push({ _id: f._id, user: u, idChat: responseChat.chat ? responseChat.chat._id : null, lastPost: { body: responseLastPost.post ? responseLastPost.post.body : "" } })
+            users.push({ _id: f._id, user: u, idChat: responseChat.chat ? responseChat.chat._id : null, lastPost: responseLastPost.post || null })
         }
 
         return { friends: users, status: 200 }

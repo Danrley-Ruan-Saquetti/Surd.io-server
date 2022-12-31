@@ -23,7 +23,7 @@ export default function PostDao() {
     }
 
     const findLastPost = async({ chat }) => {
-        const response = await Post.findOne({ chat }).limit(1).sort({ createAt: -1 }).then(async(res) => {
+        const response = await Post.findOne({ chat, info: false }).limit(1).sort({ createAt: -1 }).then(async(res) => {
             return { post: res }
         }).catch(res => {
             return { error: res }
