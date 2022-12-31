@@ -157,6 +157,24 @@ export default function UserControl() {
 
         if (responseConnectServer.error) { return responseConnectServer }
 
+        const responseFriends = await friendDao.findFriendsByIdUser({ _id: user._id })
+
+        if (responseFriends.friends) {
+            const emit = { ev: "$/friends/connected", data: { msg: `User ${user.username} connected` } }
+
+            for (let i = 0; i < responseFriends.friends.length; i++) {
+                const friend = responseFriends.friends[i]
+
+                const responseUser = friend.users[0] != user._id ? await findById({ _id: friend.users[0] }) : await findById({ _id: friend.users[0] })
+
+                if (!responseUser.user || !responseUser.user.online) { continue }
+
+                const responseSocket = await getSocket(responseUser.user.idSocket)
+
+                responseSocket.valueOf && responseSocket.socket.emit(emit.ev, emit.data)
+            }
+        }
+
         console.log(`[IO] User => {${user._id}} Host => {${idSocket}} ${action}`);
 
         return { user: responseConnectServer.user, success: { msg, system: true }, status: 200 }
@@ -278,6 +296,24 @@ export default function UserControl() {
 
         if (!responseSocket.valueOf) { return { error: { msg: "Cannot disconnect room. Please, load page for login", system: true }, status: 401 } }
 
+        const responseFriends = await friendDao.findFriendsByIdUser({ _id: user._id })
+
+        if (responseFriends.friends) {
+            const emit = { ev: "$/friends/connected", data: { msg: `User ${user.username} connected` } }
+
+            for (let i = 0; i < responseFriends.friends.length; i++) {
+                const friend = responseFriends.friends[i]
+
+                const responseUser = friend.users[0] != user._id ? await findById({ _id: friend.users[0] }) : await findById({ _id: friend.users[0] })
+
+                if (!responseUser.user || !responseUser.user.online) { continue }
+
+                const responseSocketFriend = await getSocket(responseUser.user.idSocket)
+
+                responseSocketFriend.valueOf && responseSocketFriend.socket.emit(emit.ev, emit.data)
+            }
+        }
+
         console.log(`[IO] User => {${user._id}} Host => {${idSocket}} login out`);
 
         return { success: { msg: "User logged out successfully", system: true }, status: 200 }
@@ -303,7 +339,7 @@ export default function UserControl() {
 
                 const responseFriend = await findById({ _id })
 
-                const responseSocket = responseFriend.user ? await getSocket({ idSocket: responseFriend.user.idSocket }) : { valueOf: false }
+                const responseSocket = responseFriend.user ? await getSocket(responseFriend.user.idSocket) : { valueOf: false }
 
                 await responseFriends.friends[i].remove()
 
@@ -530,6 +566,24 @@ export default function UserControl() {
         await postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
 
         ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} disconnected` }, room: `${user.serverConnected}` })
+
+        const responseFriends = await friendDao.findFriendsByIdUser({ _id: user._id })
+
+        if (responseFriends.friends) {
+            const emit = { ev: "$/friends/disconnected", data: { msg: `User ${user.username} disconnected` } }
+
+            for (let i = 0; i < responseFriends.friends.length; i++) {
+                const friend = responseFriends.friends[i]
+
+                const responseUser = friend.users[0] != user._id ? await findById({ _id: friend.users[0] }) : await findById({ _id: friend.users[0] })
+
+                if (!responseUser.user || !responseUser.user.online) { continue }
+
+                const responseSocketFriend = await getSocket(responseUser.user.idSocket)
+
+                responseSocketFriend.valueOf && responseSocketFriend.socket.emit(emit.ev, emit.data)
+            }
+        }
 
         console.log(`[IO] User => {${user._id}} Host => {${idSocket}} disconnected`);
 

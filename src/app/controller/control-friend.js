@@ -1,5 +1,6 @@
 import { getSocket } from "../io/io.js"
 import FriendDao from "../model/dao-friend.js"
+import PostDao from "../model/dao-post.js"
 import UserDao from "../model/dao-user.js"
 import { validToken } from "../util/token.service.js"
 import ChatControl from "./control-chat.js"
@@ -8,6 +9,7 @@ export default function FriendControl() {
     const friendDao = FriendDao()
     const userDao = UserDao()
     const chatControl = ChatControl()
+    const postDao = PostDao()
 
     // Use Cases
     const sendInviteFriendship = async({ idSocket, to, token }) => {
@@ -217,6 +219,8 @@ export default function FriendControl() {
 
             const responseChat = await chatControl.getChatByFriend({ idFriend: f._id })
 
+            const responseLastPost = responseChat.chat ? await postDao.findLastPost({ chat: responseChat.chat._id }) : { error: {} }
+
             u.password = undefined
             u.passwordResetToken = undefined
             u.passwordResetExpires = undefined
@@ -227,7 +231,7 @@ export default function FriendControl() {
                 u.idAdmin = undefined
             }
 
-            users.push({ _id: f._id, user: u, idChat: responseChat.chat ? responseChat.chat._id : null })
+            users.push({ _id: f._id, user: u, idChat: responseChat.chat ? responseChat.chat._id : null, lastPost: { body: responseLastPost.post ? responseLastPost.post.body : "" } })
         }
 
         return { friends: users, status: 200 }

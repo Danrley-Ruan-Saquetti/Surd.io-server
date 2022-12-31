@@ -22,6 +22,16 @@ export default function PostDao() {
         return response
     }
 
+    const findLastPost = async({ chat }) => {
+        const response = await Post.findOne({ chat }).limit(1).sort({ createAt: -1 }).then(async(res) => {
+            return { post: res }
+        }).catch(res => {
+            return { error: res }
+        })
+
+        return response
+    }
+
     const listByChat = async({ chat, isPrivate = false }) => {
         const response = !isPrivate ? await Post.find({ chat }).limit(RULES_POST.LIMIT_LIST).sort({ createAt: -1 }).then(async(res) => {
             return { posts: res }
@@ -50,6 +60,7 @@ export default function PostDao() {
         register,
         list,
         listByChat,
-        findById
+        findById,
+        findLastPost
     }
 }
