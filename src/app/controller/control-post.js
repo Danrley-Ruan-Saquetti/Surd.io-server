@@ -31,14 +31,16 @@ export default function PostControl() {
         } else {
             const responseFriend = await friendDao.findFriendshipById({ _id: chat.idFriend })
 
-            const responseUser1 = responseFriend.friendship ? await userDao.findById(responseFriend.friendship.users[0]) : { error: {} }
-            const responseUser2 = responseFriend.friendship ? await userDao.findById(responseFriend.friendship.users[1]) : { error: {} }
+            if (responseFriend.friendship) {
+                const responseUser1 = await userDao.findById(responseFriend.friendship.users[0])
+                const responseUser2 = await userDao.findById(responseFriend.friendship.users[1])
 
-            const responseSocket1 = responseUser1.user ? await getSocket(responseUser1.user.idSocket) : { valueOf: false }
-            const responseSocket2 = responseUser2.user ? await getSocket(responseUser2.user.idSocket) : { valueOf: false }
+                const responseSocket1 = responseUser1.user && responseUser1.user.online ? await getSocket(responseUser1.user.idSocket) : { valueOf: false }
+                const responseSocket2 = responseUser2.user && responseUser2.user.online ? await getSocket(responseUser2.user.idSocket) : { valueOf: false }
 
-            responseSocket1.valueOf && responseSocket1.socket.emit("$/chat/private/send-post", { msg: "User send post" })
-            responseSocket2.valueOf && responseSocket2.socket.emit("$/chat/private/send-post", { msg: "User send post" })
+                responseSocket1.valueOf && responseSocket1.socket.emit("$/chat/private/send-post", { msg: `User send post` })
+                responseSocket2.valueOf && responseSocket2.socket.emit("$/chat/private/send-post", { msg: `User send post` })
+            }
         }
 
         return { post, status: 200 }

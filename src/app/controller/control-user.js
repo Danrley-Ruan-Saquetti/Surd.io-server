@@ -65,22 +65,24 @@ export default function UserControl() {
     }
 
     const connectServer = async({ _id, user }) => {
-        const responseOldServer = user.serverConnected ? await serverControl.findById({ _id: user.serverConnected }) : { error: {} }
-
         const responseServer = await serverControl.findById({ _id })
 
         if (!responseServer.server) { return { error: { msg: "Cannot connect server, try again", system: true }, status: 401 } }
 
-        if (responseOldServer.server) {
-            const { server } = responseOldServer
+        if (user.serverConnected) {
+            const responseOldServer = await serverControl.findById({ _id: user.serverConnected })
 
-            server.playersOnline--
+            if (responseOldServer.server) {
+                const { server } = responseOldServer
 
-                await server.save()
+                server.playersOnline--
 
-            responseOldServer.server && await postControl.systemSendPost({ body: "User " + user.username + (!server.isLobby ? " leave" : " enter " + responseServer.server.name), idServer: server._id })
+                    await server.save()
 
-            ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} leave` }, room: `${server._id}` })
+                responseOldServer.server && await postControl.systemSendPost({ body: "User " + user.username + (!server.isLobby ? " leave" : " enter " + responseServer.server.name), idServer: server._id })
+
+                ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} leave` }, room: `${server._id}` })
+            }
         }
 
         const { server } = responseServer
@@ -107,11 +109,11 @@ export default function UserControl() {
 
         const responseSocket = await getSocket(idSocket)
 
-        await postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: server._id })
-
         responseSocket.valueOf && await socketJoinRoom({ idSocket, keyRoom: server._id })
 
-        responseSocket.valueOf && responseSocket.socket.emit("$/users/current/update", { msg: "User enter server", user })
+        responseSocket.valueOf && responseSocket.socket.emit("$/users/current/update/serverConnected", { msg: "User enter server", user })
+
+        await postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: server._id })
 
         ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
 
@@ -299,7 +301,7 @@ export default function UserControl() {
         const responseFriends = await friendDao.findFriendsByIdUser({ _id: user._id })
 
         if (responseFriends.friends) {
-            const emit = { ev: "$/friends/connected", data: { msg: `User ${user.username} connected` } }
+            const emit = { ev: "$/friends/disconnected", data: { msg: `User ${user.username} disconnected` } }
 
             for (let i = 0; i < responseFriends.friends.length; i++) {
                 const friend = responseFriends.friends[i]
