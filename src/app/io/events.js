@@ -452,10 +452,10 @@ io.on("connection", async(socket) => {
             response.valueOf = undefined
             response.status = undefined
 
-            socketEmit({ ev: "friends/pending/awaiting/res", data: response })
+            socketEmit({ ev: "friends/denied/res", data: response })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "friends/pending/awaiting/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
+            socketEmit({ ev: "friends/denied/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
         }
     })
 
