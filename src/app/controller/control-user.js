@@ -135,6 +135,24 @@ export default function UserControl() {
 
         if (responseConnectServer.error) { return responseConnectServer }
 
+        const responseFriends = await friendDao.findFriendsByIdUser({ _id: user._id })
+
+        if (responseFriends.friends) {
+            const emit = { ev: "$/friends/enter-server", data: { msg: `User ${user.username} enter server` } }
+
+            for (let i = 0; i < responseFriends.friends.length; i++) {
+                const friend = responseFriends.friends[i]
+
+                const responseUser = friend.users[0] != user._id ? await findById({ _id: friend.users[0] }) : await findById({ _id: friend.users[0] })
+
+                if (!responseUser.user || !responseUser.user.online) { continue }
+
+                const responseSocket = await getSocket(responseUser.user.idSocket)
+
+                responseSocket.valueOf && responseSocket.socket.emit(emit.ev, emit.data)
+            }
+        }
+
         return { success: { msg: "Server connected successfully", system: true }, status: 200 }
     }
 
@@ -496,13 +514,15 @@ export default function UserControl() {
                 _id: responseFriendship.friendship && responseFriendship.friendship._id
             }
 
+            const responseServer = await serverControl.findById({ _id: u.serverConnected })
+
             const _user = {
                 username: u.username,
                 _id: u._id,
                 level: u.level,
                 xp: u.xp,
                 xpLevelUp: u.xpLevelUp,
-                serverConnected: u.serverConnected,
+                serverConnected: responseServer.server ? responseServer.server : { _id: u.serverConnected },
                 __v: u.__v,
                 recordPoints: u.recordPoints,
                 lastTimeOnline: u.lastTimeOnline,

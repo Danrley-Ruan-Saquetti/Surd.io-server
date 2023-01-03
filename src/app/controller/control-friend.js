@@ -4,12 +4,14 @@ import PostDao from "../model/dao-post.js"
 import UserDao from "../model/dao-user.js"
 import { validToken } from "../util/token.service.js"
 import ChatControl from "./control-chat.js"
+import ServerControl from "./control-server.js"
 
 export default function FriendControl() {
     const friendDao = FriendDao()
     const userDao = UserDao()
     const chatControl = ChatControl()
     const postDao = PostDao()
+    const serverControl = ServerControl()
 
     // Use Cases
     const sendInviteFriendship = async({ idSocket, to, token }) => {
@@ -223,11 +225,14 @@ export default function FriendControl() {
 
             const responseLastPost = responseChat.chat ? await postDao.findLastPost({ chat: responseChat.chat._id }) : { error: {} }
 
+            const responseServer = await serverControl.findById({ _id: u.serverConnected })
+
             u.password = undefined
             u.passwordResetToken = undefined
             u.passwordResetExpires = undefined
             u.authToken = undefined
             u.idSocket = undefined
+            u.serverConnected = responseServer.server ? responseServer.server : { _id: u.serverConnected }
 
             if (!u.idAdmin) {
                 u.idAdmin = undefined
