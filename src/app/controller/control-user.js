@@ -321,6 +321,24 @@ export default function UserControl() {
         return { success: { msg: "User logged out successfully", system: true }, status: 200 }
     }
 
+    const verifyUserPlaying = async({ idSocket, token }) => {
+        const authValid = await validToken(token, idSocket)
+
+        if (!authValid.valueOf) { return authValid }
+
+        const { user } = authValid
+
+        const responseServer = await serverControl.findById({ _id: user.serverConnected })
+
+        if (!responseServer.server) { return { error: { msg: "Cannot connect server, try again", system: true }, status: 401 } }
+
+        const { server } = responseServer
+
+        if (server.isLobby) { return { error: { msg: "User not playing", system: true }, status: 401 } }
+
+        return { success: { msg: "User is playing", system: true }, status: 200 }
+    }
+
     const userRemove = async({ token, idSocket }) => {
         const authValid = await validToken(token, idSocket)
 
@@ -619,7 +637,7 @@ export default function UserControl() {
     }
 
     // DaoUser
-    const register = async({ username = "", email = "", password = "", online = false, serverConnected = null, level = 0, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null, idSocket = null }) => {
+    const register = async({ username = "", email = "", password = "", online = false, serverConnected = null, level = 1, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null, idSocket = null }) => {
         const response = await userDao.register({ username, email, password, online, serverConnected, level, xp, xpUpLevel, recordPoints, admin, idSocket })
         return response
     }
@@ -659,6 +677,7 @@ export default function UserControl() {
         userLogin,
         userReconnect,
         userLogout,
+        verifyUserPlaying,
         userRemove,
         userForgotPassword,
         userResetPassword,

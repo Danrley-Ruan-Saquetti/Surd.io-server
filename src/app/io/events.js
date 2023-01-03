@@ -227,6 +227,22 @@ io.on("connection", async(socket) => {
         }
     })
 
+    socket.on("users/verify-is-playing", async(req) => {
+        try {
+            const { authToken } = req
+
+            const response = await userControl.verifyUserPlaying({ idSocket, token: authToken })
+
+            response.valueOf = undefined
+            response.status = undefined
+
+            socketEmit({ ev: "users/verify-is-playing/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "users/verify-is-playing/res", data: { error: { msg: "Cannot verify user is playing", system: true } } })
+        }
+    })
+
     // Post
     socket.on("chat", async(req) => {
         try {
