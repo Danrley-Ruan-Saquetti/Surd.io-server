@@ -21,6 +21,16 @@ export default function ChatDao() {
         return response
     }
 
+    const listChatsServer = async() => {
+        const response = await Chat.find({ isServer: true }).then(async(res) => {
+            return { chats: res }
+        }).catch(res => {
+            return { error: res }
+        })
+
+        return response
+    }
+
     const findById = async({ _id }) => {
         const response = await Chat.findById(_id).then(async(res) => {
             return { chat: res }
@@ -74,6 +84,7 @@ export default function ChatDao() {
     return {
         register,
         list,
+        listChatsServer,
         findById,
         findByServer,
         findByUser,

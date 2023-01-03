@@ -277,8 +277,6 @@ export default function UserControl() {
 
         const { serverConnected } = user
 
-        await postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
-
         user.online = false
         user.lastTimeOnline = Date.now()
         user.serverConnected = null
@@ -291,6 +289,8 @@ export default function UserControl() {
 
         responseServer.server && responseServer.server.playersOnline--
             responseServer.server && await responseServer.server.save()
+
+        await postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
 
         ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} disconnected` }, room: `${serverConnected}` })
 
@@ -560,14 +560,24 @@ export default function UserControl() {
 
         const { user } = response
 
+        const { serverConnected } = user
+
         user.online = false
         user.lastTimeOnline = Date.now()
+        user.serverConnected = null
+        user.authToken = null
+        user.idSocket = null
 
         await user.save()
 
-        await postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
+        const responseServer = await serverControl.findById({ _id: serverConnected })
 
-        ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} disconnected` }, room: `${user.serverConnected}` })
+        responseServer.server && responseServer.server.playersOnline--
+            responseServer.server && await responseServer.server.save()
+
+        await postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: serverConnected })
+
+        ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} disconnected` }, room: `${serverConnected}` })
 
         const responseFriends = await friendDao.findFriendsByIdUser({ _id: user._id })
 

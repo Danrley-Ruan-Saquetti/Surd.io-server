@@ -43,11 +43,19 @@ export default async function Data() {
     }
 
     const postData = async() => {
-        const response = await postDao.list()
+        const responseChats = await chatDao.listChatsServer()
 
-        response.posts && response.posts.forEach(async(post) => {
-            await post.remove()
-        })
+        responseChats.chats && (function() {
+            responseChats.chats.forEach(async(chat) => {
+                const responsePost = await postDao.listByChat({ chat: chat._id, isPrivate: true })
+
+                responsePost.posts && (function() {
+                    responsePost.posts.forEach(async(post) => {
+                        await post.remove()
+                    })
+                }())
+            })
+        }())
     }
 
     serverData()
