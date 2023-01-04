@@ -100,8 +100,6 @@ export default function FriendControl() {
         const responseSocketFrom = responseSender.user ? await getSocket(responseSender.user.idSocket) : { valueOf: false }
         const responseSocketTo = await getSocket(recipient.idSocket)
 
-        console.log(responseSocketFrom.socket.id, responseSocketTo.socket.id);
-
         responseSocketFrom.valueOf && responseSocketFrom.socket.emit("$/friends/accept-invite", { msg: `User ${recipient.username} accept invite` })
         responseSocketTo.valueOf && responseSocketTo.socket.emit("$/friends/accept-invite", { msg: `User ${recipient.username} accept invite` })
 

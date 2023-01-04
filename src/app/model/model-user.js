@@ -43,6 +43,10 @@ const UserSchema = mongoose.Schema({
         type: Number,
         require: true
     },
+    coins: {
+        type: Number,
+        require: true
+    },
     recordPoints: {
         type: Number,
         require: true

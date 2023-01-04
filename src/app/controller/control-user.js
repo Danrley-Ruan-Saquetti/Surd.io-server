@@ -4,10 +4,10 @@ import UserDao from "../model/dao-user.js"
 import ServerControl from "./control-server.js"
 import AdminControl from "./control-admin.js"
 import PostControl from "./control-post.js"
-import { generatedToken, validToken } from "../util/token.service.js"
-import { RULES_USER } from "../business-rule/rules.js"
-import { getSocket, ioEmit, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
 import FriendDao from "../model/dao-friend.js"
+import { getSocket, ioEmit, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
+import { RULES_USER } from "../business-rule/rules.js"
+import { generatedToken, validToken } from "../util/token.service.js"
 
 export default function UserControl() {
     const userDao = UserDao()
@@ -657,7 +657,7 @@ export default function UserControl() {
     }
 
     // DaoUser
-    const register = async({ username = "", email = "", password = "", online = false, serverConnected = null, level = 1, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null, idSocket = null }) => {
+    const register = async({ username = "", email = "", password = "", online = false, serverConnected = null, level = 1, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null, idSocket = null, coins = 0 }) => {
         const response = await userDao.register({ username, email, password, online, serverConnected, level, xp, xpUpLevel, recordPoints, admin, idSocket })
         return response
     }
