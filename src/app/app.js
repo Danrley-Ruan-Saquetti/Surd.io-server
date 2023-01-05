@@ -5,7 +5,7 @@ import bodyParser from "body-parser"
 // import friendRouter from "./router/router-friend.js"
 // import serverRouter from "./router/router-server.js"
 // import chatRouter from "./router/router-chat.js"
-import Data from "./data/data.js"
+import DataStart from "./data-start/index.js"
 
 const app = express()
 
@@ -18,6 +18,6 @@ app.use(bodyParser.urlencoded({ extended: false }))
 // app.use("/friends", friendRouter)
 // app.use("/chats", chatRouter)
 
-Data()
+DataStart()
 
 export default app

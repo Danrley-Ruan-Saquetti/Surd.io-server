@@ -8,7 +8,7 @@ const chatDao = ChatDao()
 const userDao = UserDao()
 const postDao = PostDao()
 
-export default async function Data() {
+export default async function DataStart() {
     const servers = [{ name: "Server A", isLobby: false }, { name: "Server B", isLobby: false }, { name: "Server C", isLobby: false }, { name: "Server D", isLobby: false }, { name: "Server E", isLobby: false }, { name: "Lobby", isLobby: true }]
 
     const serverData = () => {
