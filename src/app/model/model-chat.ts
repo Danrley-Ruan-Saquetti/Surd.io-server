@@ -1,6 +1,13 @@
-import mongoose from "../../database/index.js"
+import { IId, mongoose } from "../../database/index.js"
 
-const ChatSchema = mongoose.Schema({
+export interface IChat extends mongoose.Document {
+    idServer?: IId
+    isServer?: Boolean
+    idFriend?: IId
+    createAt?: Date
+}
+
+const ChatSchema = new mongoose.Schema<IChat>({
     idServer: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Server",
@@ -21,6 +28,4 @@ const ChatSchema = mongoose.Schema({
     }
 })
 
-const Chat = mongoose.model("Chat", ChatSchema)
-
-export default Chat
+export const Chat = mongoose.model("Chat", ChatSchema)

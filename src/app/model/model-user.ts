@@ -1,6 +1,32 @@
-import mongoose from "../../database/index.js"
+import { IId, mongoose } from "../../database/index.js"
 
-const UserSchema = mongoose.Schema({
+export interface IUser extends mongoose.Document {
+    idAdmin?: IId | null
+    idSocket?: String | null
+    username: String
+    email: String
+    password: String
+    online: Boolean
+    serverConnected?: IId | null
+    level: Number
+    xp: Number
+    xpUpLevel: Number
+    coins: Number
+    recordPoints: Number
+    damage: Number
+    health: Number
+    defense: Number
+    speed: Number
+    size: Number
+    passwordResetToken?: String | null
+    passwordResetExpires?: Date | null
+    authToken?: String | null
+    lastToken?: String | null
+    lastTimeOnline?: Date | null
+    createAt?: Date | null
+}
+
+const UserSchema = new mongoose.Schema<IUser>({
     idAdmin: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Admin",
@@ -44,10 +70,6 @@ const UserSchema = mongoose.Schema({
         require: true
     },
     coins: {
-        type: Number,
-        require: true
-    },
-    recordPoints: {
         type: Number,
         require: true
     },
@@ -101,6 +123,4 @@ const UserSchema = mongoose.Schema({
     }
 })
 
-const User = mongoose.model("User", UserSchema)
-
-export default User
+export const User = mongoose.model("User", UserSchema)

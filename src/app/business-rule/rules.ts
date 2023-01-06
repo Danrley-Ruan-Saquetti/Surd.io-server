@@ -1,5 +1,5 @@
 export const RULES_USER = {
-    VALID_REGISTER: ({ username, email, password }) => {
+    VALID_REGISTER: ({ username, email, password }: { username: String, email: String, password: String }) => {
         const error = []
 
         const INCORRECT_CHARACTERS = " !@#$%&*|\\/?+=§`´{}[]()ºª°<>,:;'\"¹²³£¢"

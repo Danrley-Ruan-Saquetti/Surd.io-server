@@ -1,6 +1,16 @@
-import mongoose from "../../database/index.js"
+import { IId, mongoose } from "../../database/index.js"
 
-const FriendSchema = mongoose.Schema({
+export interface IFriend extends mongoose.Document {
+    users: IId[]
+    idChat?: IId
+    pending?: Boolean
+    accepted?: Boolean
+    from: IId
+    to: IId
+    createAt?: Date
+}
+
+const FriendSchema = new mongoose.Schema<IFriend>({
     users: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -35,6 +45,4 @@ const FriendSchema = mongoose.Schema({
     }
 })
 
-const Friend = mongoose.model("Friend", FriendSchema)
-
-export default Friend
+export const Friend = mongoose.model("Friend", FriendSchema)

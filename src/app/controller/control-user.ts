@@ -1,23 +1,28 @@
 import bcryptjs from "bcryptjs"
 import crypto from "crypto"
 import UserDao from "../model/dao-user.js"
+import FriendDao from "../model/dao-friend.js"
+import { IFriend } from "../model/model-friend.js"
+import { IUser } from "../model/model-user.js"
 import ServerControl from "./control-server.js"
 import AdminControl from "./control-admin.js"
 import PostControl from "./control-post.js"
-import FriendDao from "../model/dao-friend.js"
-import { getSocket, ioEmit, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
 import { RULES_USER } from "../business-rule/rules.js"
 import { generatedToken, validToken } from "../util/token.service.js"
+import { getSocket, ioEmit, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
+import { IId } from "../../database/index.js"
+import GameControl from "./control-game.js"
 
 export default function UserControl() {
     const userDao = UserDao()
+    const friendDao = FriendDao()
     const serverControl = ServerControl()
     const adminControl = AdminControl()
     const postControl = PostControl()
-    const friendDao = FriendDao()
+    const gameControl = GameControl()
 
-    const verifyValuesAlreadyExists = async({ username, email, _id = null }) => {
-        const error = {}
+    const verifyValuesAlreadyExists = async ({ username, email, _id = "" }: { username: String, email: String, _id?: String }) => {
+        const error: { username?: { msg: String, username: Boolean }, email?: { msg: String, email: Boolean } } = {}
 
         const { user: userUsername } = await findByUsername({ username })
 
@@ -46,7 +51,7 @@ export default function UserControl() {
         return { error, valueOf: Object.keys(error).length == 0 }
     }
 
-    const validAuthentication = async({ login, password }) => {
+    const validAuthentication = async ({ login, password }: { login: String, password: String }) => {
         const responseEmail = await findByEmail({ email: login })
 
         let { user } = responseEmail
@@ -59,12 +64,12 @@ export default function UserControl() {
 
         if (!user) { return { error: { msg: "User not found", login: true }, valueOf: false } }
 
-        if (!await bcryptjs.compare(password, user.password)) { return { error: { msg: "Password incorrect", password: true }, valueOf: false } }
+        if (!await bcryptjs.compare(`${password}`, `${user.password}`)) { return { error: { msg: "Password incorrect", password: true }, valueOf: false } }
 
         return { user, error: [], valueOf: true }
     }
 
-    const connectServer = async({ _id, user }) => {
+    const connectServer = async ({ _id, user }: { _id: IId, user: IUser }) => {
         const responseServer = await serverControl.findById({ _id })
 
         if (!responseServer.server) { return { error: { msg: "Cannot connect server, try again", system: true }, status: 401 } }
@@ -75,9 +80,10 @@ export default function UserControl() {
             if (responseOldServer.server) {
                 const { server } = responseOldServer
 
+                //@ts-expect-error
                 server.playersOnline--
 
-                    await server.save()
+                await server.save()
 
                 responseOldServer.server && await postControl.systemSendPost({ body: "User " + user.username + (!server.isLobby ? " leave" : " enter " + responseServer.server.name), idServer: server._id })
 
@@ -87,12 +93,14 @@ export default function UserControl() {
 
         const { server } = responseServer
 
+        //@ts-expect-error
         user.serverConnected = server
 
         await user.save()
 
         const { idSocket } = user
 
+        //@ts-expect-error
         user.password = undefined
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
@@ -103,13 +111,14 @@ export default function UserControl() {
             user.idAdmin = undefined
         }
 
+        //@ts-expect-error
         server.playersOnline++
 
-            await server.save()
+        await server.save()
 
-        const responseSocket = await getSocket(idSocket)
+        const responseSocket = await getSocket(idSocket || "")
 
-        responseSocket.valueOf && await socketJoinRoom({ idSocket, keyRoom: server._id })
+        responseSocket.valueOf && await socketJoinRoom({ idSocket: idSocket || "", keyRoom: server._id })
 
         responseSocket.valueOf && responseSocket.socket.emit("$/users/current/update/serverConnected", { msg: "User enter server", user })
 
@@ -122,18 +131,18 @@ export default function UserControl() {
         return { success: { msg: "User connected server successfully", system: true }, status: 200, user }
     }
 
-    const userConnectServer = async({ _id, token, idSocket }) => {
+    const userConnectServer = async ({ _id, token, idSocket }: { _id: IId, token: String, idSocket: String }) => {
         const authValid = await validToken(token, idSocket)
 
-        if (!authValid.valueOf) { return authValid }
+        if (!authValid.user) { return authValid }
 
         const { user } = authValid
 
-        if (user.idSocket != idSocket) { return { error: { msg: "Host not connected", system: true }, status: 401 } }
+        if (user.idSocket != idSocket) { return { error: { msg: "Host not connected", system: true }, status: 401, user: null } }
 
         const responseConnectServer = await connectServer({ _id, user })
 
-        if (responseConnectServer.error) { return responseConnectServer }
+        if (responseConnectServer.error) { return { ...responseConnectServer, user: null } }
 
         const responseFriends = await friendDao.findFriendsByIdUser({ _id: user._id })
 
@@ -147,29 +156,29 @@ export default function UserControl() {
 
                 if (!responseUser.user || !responseUser.user.online) { continue }
 
-                const responseSocket = await getSocket(responseUser.user.idSocket)
+                const responseSocket = await getSocket(responseUser.user?.idSocket || "")
 
                 responseSocket.valueOf && responseSocket.socket.emit(emit.ev, emit.data)
             }
         }
 
-        return { success: { msg: "Server connected successfully", system: true }, status: 200 }
+        return { user, success: { msg: "Server connected successfully", system: true }, status: 200 }
     }
 
-    const userConnected = async({ user, idSocket, msg, action }) => {
+    const userConnected = async ({ user, idSocket, msg, action }: { user: IUser, idSocket: String, msg: String, action: String }) => {
         const responseLobby = await serverControl.findLobby()
 
         if (!responseLobby.server) { return { error: { msg: "Cannot connect lobby, try again", system: true }, status: 401 } }
 
         const { server } = responseLobby
 
-        const token = generatedToken({ id: user, admin: user.idAdmin })
+        const token = generatedToken({ _id: user._id, admin: !(!user.idAdmin) })
 
         user.authToken = token
         user.lastToken = token
         user.online = true
         user.idSocket = idSocket
-        user.lastTimeOnline = Date.now()
+        user.lastTimeOnline = new Date(Date.now())
 
         await user.save()
 
@@ -189,7 +198,7 @@ export default function UserControl() {
 
                 if (!responseUser.user || !responseUser.user.online) { continue }
 
-                const responseSocket = await getSocket(responseUser.user.idSocket)
+                const responseSocket = await getSocket(responseUser.user?.idSocket || "")
 
                 responseSocket.valueOf && responseSocket.socket.emit(emit.ev, emit.data)
             }
@@ -201,7 +210,7 @@ export default function UserControl() {
     }
 
     // Use Cases
-    const userRegister = async({ username = "", email = "", password = "", isAdmin = false, tokenAdmin = null, idSocket }) => {
+    const userRegister = async ({ username = "", email = "", password = "", isAdmin = false, tokenAdmin = "", idSocket }: { username: String, email: String, password: String, isAdmin?: Boolean, tokenAdmin?: String, idSocket: String }) => {
         const responseSocket = await findByIdSocket({ idSocket })
 
         if (responseSocket.user) { return { error: { msg: "Host already connected", system: true }, status: 401 } }
@@ -214,16 +223,18 @@ export default function UserControl() {
 
         if (!valuesAlreadyExistsVerified.valueOf) { return { error: valuesAlreadyExistsVerified.error, status: 400 } }
 
-        const response = await register({ username, email, password: await bcryptjs.hash(password, 5) })
+        const passwordHash = await bcryptjs.hash(`${password}`, 5).then(res => { return res })
 
-        if (response.error) { return { error: { msg: "Cannot register user", system: true }, status: 400 } }
+        const response = await register({ username, email, password: passwordHash })
+
+        if (!response.user) { return { error: { msg: "Cannot register user", system: true }, status: 400 } }
 
         const { user } = response
 
         if (isAdmin) {
             const responseAdmin = await adminControl.createAdmin({ user, idSocket, tokenAdmin })
 
-            if (!responseAdmin.valueOf) {
+            if (!responseAdmin.admin) {
                 await user.remove()
 
                 return responseAdmin
@@ -245,7 +256,7 @@ export default function UserControl() {
         }
     }
 
-    const userLogin = async({ login = "", password = "", idSocket }) => {
+    const userLogin = async ({ login = "", password = "", idSocket }: { login: String, password: String, idSocket: String }) => {
         if (!login) {
             return { error: { msg: "Inform the e-mail or username", login: true }, status: 400 }
         } else {
@@ -259,7 +270,7 @@ export default function UserControl() {
 
         const validAuth = await validAuthentication({ login, password })
 
-        if (!validAuth.valueOf) { return { error: validAuth.error, status: 401 } }
+        if (!validAuth.user) { return { error: validAuth.error, status: 401 } }
 
         const { user } = validAuth
 
@@ -270,7 +281,7 @@ export default function UserControl() {
         return responseUserConnect
     }
 
-    const userReconnect = async({ _id, idSocket, token: t }) => {
+    const userReconnect = async ({ _id, idSocket, token: t }: { _id: IId, idSocket: String, token: String }) => {
         const responseUser = await findById({ _id })
 
         if (!responseUser.user) { return { error: { msg: "User not found", system: true }, status: 401 } }
@@ -286,27 +297,31 @@ export default function UserControl() {
         return responseUserConnect
     }
 
-    const userLogout = async({ token, idSocket }) => {
+    const userLogout = async ({ token, idSocket }: { token: String, idSocket: String }) => {
         const authValid = await validToken(token, idSocket)
 
-        if (!authValid.valueOf) { return authValid }
+        if (!authValid.user) { return authValid }
 
         const { user } = authValid
 
         const { serverConnected } = user
 
         user.online = false
-        user.lastTimeOnline = Date.now()
+        user.lastTimeOnline = new Date(Date.now())
         user.serverConnected = null
         user.authToken = null
         user.idSocket = null
 
         await user.save()
 
-        const responseServer = await serverControl.findById({ _id: serverConnected })
+        const responseServer = await serverControl.findById({ _id: serverConnected || null })
 
-        responseServer.server && responseServer.server.playersOnline--
-            responseServer.server && await responseServer.server.save()
+        if (responseServer.server) {
+            //@ts-expect-error
+            responseServer.server.playersOnline--
+
+            await responseServer.server.save()
+        }
 
         await postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: user.serverConnected })
 
@@ -328,7 +343,7 @@ export default function UserControl() {
 
                 if (!responseUser.user || !responseUser.user.online) { continue }
 
-                const responseSocketFriend = await getSocket(responseUser.user.idSocket)
+                const responseSocketFriend = await getSocket(responseUser.user?.idSocket || "")
 
                 responseSocketFriend.valueOf && responseSocketFriend.socket.emit(emit.ev, emit.data)
             }
@@ -339,14 +354,14 @@ export default function UserControl() {
         return { success: { msg: "User logged out successfully", system: true }, status: 200 }
     }
 
-    const verifyUserPlaying = async({ idSocket, token }) => {
+    const verifyUserPlaying = async ({ idSocket, token }: { idSocket: String, token: String }) => {
         const authValid = await validToken(token, idSocket)
 
-        if (!authValid.valueOf) { return authValid }
+        if (!authValid.user) { return authValid }
 
         const { user } = authValid
 
-        const responseServer = await serverControl.findById({ _id: user.serverConnected })
+        const responseServer = await serverControl.findById({ _id: user?.serverConnected || null })
 
         if (!responseServer.server) { return { error: { msg: "Cannot connect server, try again", system: true }, status: 401 } }
 
@@ -357,27 +372,30 @@ export default function UserControl() {
         return { success: { msg: "User is playing", system: true }, status: 200 }
     }
 
-    const userRemove = async({ token, idSocket }) => {
+    const userRemove = async ({ token, idSocket }: { token: String, idSocket: String }) => {
         const authValid = await validToken(token, idSocket)
 
-        if (!authValid.valueOf) { return authValid }
+        if (!authValid.user) { return authValid }
 
         const { user } = authValid
 
-        const responseServer = await serverControl.findById({ _id: user.serverConnected })
+        const responseServer = await serverControl.findById({ _id: user?.serverConnected || null })
 
-        responseServer.server && responseServer.playersOnline--
-            responseServer.server && await responseServer.save()
+        if (responseServer.server) {
+            //@ts-expect-error
+            responseServer.playersOnline--
+            await responseServer.server.save()
+        }
 
         const responseFriends = await friendDao.findFriendsByIdUser({ _id: user._id })
 
         if (responseFriends.friends) {
             for (let i = 0; i < responseFriends.friends.length; i++) {
-                const _id = responseFriends.friends.users[responseFriends.friends.users[0] != user._id ? 0 : 1]
+                const _id = responseFriends.friends[i].users[responseFriends.friends[i].users[0] != user._id ? 0 : 1]
 
                 const responseFriend = await findById({ _id })
 
-                const responseSocket = responseFriend.user ? await getSocket(responseFriend.user.idSocket) : { valueOf: false }
+                const responseSocket = responseFriend.user ? await getSocket(responseFriend.user?.idSocket || "") : { valueOf: false }
 
                 await responseFriends.friends[i].remove()
 
@@ -385,19 +403,21 @@ export default function UserControl() {
             }
         }
 
+        const { serverConnected } = user
+
         await user.remove()
 
         console.log(`[IO] User => {${user._id}} Host => {${idSocket}} deleted user`);
 
-        ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} disconnected` }, room: `${server._id}` })
+        ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} disconnected` }, room: `${serverConnected}` })
 
         return { success: { msg: "User removed successfully", system: true }, status: 200 }
     }
 
-    const userForgotPassword = async({ email }) => {
+    const userForgotPassword = async ({ email }: { email: String }) => {
         const response = await findByEmail({ email })
 
-        if (response.error) { return { error: { msg: "User not found", email: true }, status: 400 } }
+        if (!response.user) { return { error: { msg: "User not found", email: true }, status: 400 } }
 
         const { user } = response
 
@@ -414,55 +434,56 @@ export default function UserControl() {
         return { status: 200, success: { msg: "Check your e-mail for reset password", system: true }, token }
     }
 
-    const userResetPassword = async({ email, password, token }) => {
+    const userResetPassword = async ({ email, password, token }: { email: String, password: String, token: String }) => {
         const response = await findByEmail({ email })
 
-        if (response.error) { return { error: { msg: "User not found", email: true }, status: 400 } }
+        if (!response.user) { return { error: { msg: "User not found", email: true }, status: 400 } }
 
         const { user } = response
 
         if (token != user.passwordResetToken) { return { error: { msg: "Token invalid", system: true }, status: 400 } }
 
-        if (new Date() > user.passwordResetExpires) { return { error: { msg: "TokToken expired, generated a new one", system: true }, status: 400 } }
+        if (user.passwordResetExpires && new Date() > user.passwordResetExpires) { return { error: { msg: "TokToken expired, generated a new one", system: true }, status: 400 } }
 
-        user.password = await bcryptjs.hash(password, 5)
-        user.passwordResetToken = null
-        user.passwordResetExpires = null
+        user.password = await bcryptjs.hash(`${password}`, 5).then(res => { return res })
 
         await user.save()
 
         return { success: { msg: "Reset password successfully", system: true }, status: 200 }
     }
 
-    const queryUser = async({ username = "", token, idSocket }) => {
+    const queryUser = async ({ username = "", token, idSocket }: { username: String, token: String, idSocket: String }) => {
         const tokenValid = await validToken(token, idSocket)
 
         if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
 
         const response = await findByUsername({ username })
 
-        if (response.error) { return { error: { msg: "User not found", username: true }, status: 400 } }
+        if (!response.user) { return { error: { msg: "User not found", username: true }, status: 400 } }
 
         const { user } = response
 
+        //@ts-expect-error
         user.password = undefined
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
         user.authToken = undefined
         user.idSocket = undefined
+        //@ts-expect-error
         user.email = undefined
         user.lastToken = undefined
 
         return { user, status: 200 }
     }
 
-    const selectUser = async({ idSocket, token }) => {
+    const selectUser = async ({ idSocket, token }: { idSocket: String, token: String }) => {
         const tokenValid = await validToken(token, idSocket)
 
-        if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
+        if (!tokenValid.user) { return { error: tokenValid.error, status: 400 } }
 
         const { user } = tokenValid
 
+        //@ts-expect-error
         user.password = undefined
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
@@ -477,18 +498,18 @@ export default function UserControl() {
         return { user, status: 200 }
     }
 
-    const listUsers = async({ idSocket, token }) => {
+    const listUsers = async ({ idSocket, token }: { idSocket: String, token: String }) => {
         const tokenValid = await validToken(token, idSocket)
 
         if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
 
         const { user } = tokenValid
 
-        const responseServer = await serverControl.findById({ _id: user.serverConnected })
+        const responseServer = await serverControl.findById({ _id: user?.serverConnected || null })
 
-        const response = responseServer.server ? !responseServer.server.isLobby ? await findUsersByServer({ server: user.serverConnected }) : await findUsersOnline() : { error: {} }
+        const response = responseServer.server ? !responseServer.server.isLobby ? await findUsersByServer({ server: user?.serverConnected || null }) : await findUsersOnline() : { error: {} }
 
-        if (response.error) { return { error: { msg: "Cannot get users", system: true }, status: 401 } }
+        if (!response.users) { return { error: { msg: "Cannot get users", system: true }, status: 401 } }
 
         const { users: us } = response
 
@@ -497,11 +518,11 @@ export default function UserControl() {
         for (let i = 0; i < us.length; i++) {
             const u = us[i]
 
-            let responseFriendship = { error: null, friendship: null }
+            let responseFriendship: { error?: any, friendship?: IFriend | null | undefined }
 
             let j = 0
             do {
-                responseFriendship = j == 0 ? await friendDao.findFriendshipByUsers({ users: [user._id, u._id] }) : await friendDao.findFriendshipByUsers({ users: [u._id, user._id] })
+                responseFriendship = j == 0 ? await friendDao.findFriendshipByUsers({ users: [user?._id || null, u._id] }) : await friendDao.findFriendshipByUsers({ users: [u._id, user?._id || null] })
                 j++
             } while (j < 2 && !responseFriendship.friendship);
 
@@ -514,14 +535,14 @@ export default function UserControl() {
                 _id: responseFriendship.friendship && responseFriendship.friendship._id
             }
 
-            const responseServer = await serverControl.findById({ _id: u.serverConnected })
+            const responseServer = await serverControl.findById({ _id: u?.serverConnected || null })
 
             const _user = {
                 username: u.username,
                 _id: u._id,
                 level: u.level,
                 xp: u.xp,
-                xpLevelUp: u.xpLevelUp,
+                xpUpLevel: u.xpUpLevel,
                 serverConnected: responseServer.server ? responseServer.server : { _id: u.serverConnected },
                 __v: u.__v,
                 recordPoints: u.recordPoints,
@@ -536,7 +557,7 @@ export default function UserControl() {
         return { users, status: 200 }
     }
 
-    const listUsersOnline = async({ idSocket, token }) => {
+    const listUsersOnline = async ({ idSocket, token }: { idSocket: String, token: String }) => {
         const tokenValid = await validToken(token, idSocket)
 
         if (!tokenValid.valueOf) { return { error: tokenValid.error, status: 400 } }
@@ -545,7 +566,7 @@ export default function UserControl() {
 
         const response = await findUsersOnline()
 
-        if (response.error) { return { error: { msg: "Cannot get users", system: true }, status: 401 } }
+        if (!response.users) { return { error: { msg: "Cannot get users", system: true }, status: 401 } }
 
         const { users: us } = response
 
@@ -554,7 +575,7 @@ export default function UserControl() {
         for (let i = 0; i < us.length; i++) {
             const u = us[i]
 
-            const responseFriendship = await friendDao.findFriendshipByUsers({ users: [user._id, u._id] })
+            const responseFriendship = await friendDao.findFriendshipByUsers({ users: [user?._id || null, u._id] })
 
             const friend = {
                 isInvited: !responseFriendship.error,
@@ -569,7 +590,7 @@ export default function UserControl() {
                 _id: u._id,
                 level: u.level,
                 xp: u.xp,
-                xpLevelUp: u.xpLevelUp,
+                xpUpLevel: u.xpUpLevel,
                 serverConnected: u.serverConnected,
                 __v: u.__v,
                 recordPoints: u.recordPoints,
@@ -585,11 +606,11 @@ export default function UserControl() {
     }
 
     // Events
-    const EUserConnect = async(idSocket) => {
+    const EUserConnect = async (idSocket: String) => {
         console.log(`[IO] Host => {${idSocket}} connected`);
     }
 
-    const EUserDisconnect = async({ idSocket }) => {
+    const EUserDisconnect = async ({ idSocket }: { idSocket: String }) => {
         const response = await findByIdSocket({ idSocket })
 
         !response.user && console.log(`[IO] Host => {${idSocket}} disconnected`);
@@ -601,19 +622,22 @@ export default function UserControl() {
         const { serverConnected } = user
 
         user.online = false
-        user.lastTimeOnline = Date.now()
+        user.lastTimeOnline = new Date(Date.now())
         user.serverConnected = null
         user.authToken = null
         user.idSocket = null
 
         await user.save()
 
-        const responseServer = await serverControl.findById({ _id: serverConnected })
+        const responseServer = await serverControl.findById({ _id: serverConnected || null })
 
-        responseServer.server && responseServer.server.playersOnline--
-            responseServer.server && await responseServer.server.save()
+        if (responseServer.server) {
+            //@ts-expect-error
+            responseServer.server.playersOnline--
+            await responseServer.server.save()
+        }
 
-        await postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: serverConnected })
+        await postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: serverConnected || null })
 
         ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} disconnected` }, room: `${serverConnected}` })
 
@@ -629,7 +653,7 @@ export default function UserControl() {
 
                 if (!responseUser.user || !responseUser.user.online) { continue }
 
-                const responseSocketFriend = await getSocket(responseUser.user.idSocket)
+                const responseSocketFriend = await getSocket(responseUser.user?.idSocket || "")
 
                 responseSocketFriend.valueOf && responseSocketFriend.socket.emit(emit.ev, emit.data)
             }
@@ -640,54 +664,70 @@ export default function UserControl() {
         return { status: 200 }
     }
 
-    const EUserStartGame = async({ _id, idSocket, token }) => {
+    const EUserStartGame = async ({ _id, idSocket, token }: { _id: IId, idSocket: String, token: String }) => {
         const responseConnectServer = await userConnectServer({ _id, idSocket, token })
+
+        if (!responseConnectServer.valueOf || !responseConnectServer.user) { return responseConnectServer }
+
+        const { user } = responseConnectServer
+
+        const responseGame = gameControl.UserStartGame({ user, idServer: _id })
+
+        if (!responseGame) { return { error: { msg: "Cannot connect server", system: true }, valueOf: false, status: 401 } }
 
         return responseConnectServer
     }
 
-    const EUserQuitGame = async({ idSocket, token }) => {
+    const EUserQuitGame = async ({ idSocket, token }: { idSocket: String, token: String }) => {
         const responseLobby = await serverControl.findLobby()
 
-        if (responseLobby.error) { return { error: { msg: "Lobby not found", system: true }, status: 404 } }
+        if (!responseLobby.server) { return { error: { msg: "Lobby not found", system: true }, status: 404 } }
 
         const responseConnectServer = await userConnectServer({ _id: responseLobby.server._id, idSocket, token })
+
+        if (!responseConnectServer.valueOf || !responseConnectServer.user) { return responseConnectServer }
+
+        const { user } = responseConnectServer
+
+        const responseGame = gameControl.UserQuitGame({ user })
+
+        if (!responseGame) { return { error: { msg: "Cannot disconnect server", system: true }, valueOf: false, status: 401 } }
 
         return responseConnectServer
     }
 
     // DaoUser
-    const register = async({ username = "", email = "", password = "", online = false, serverConnected = null, level = 1, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null, idSocket = null, coins = 0 }) => {
-        const response = await userDao.register({ username, email, password, online, serverConnected, level, xp, xpUpLevel, recordPoints, admin, idSocket })
+    const register = async ({ username = "", email = "", password = "", online = false, serverConnected = null, level = 1, xp = 0, xpUpLevel = 0, recordPoints = 0, admin = null, idSocket = "", coins = 0 }: { username: String, email: String, password: String, online?: Boolean, serverConnected?: IId, level?: Number, xp?: Number, xpUpLevel?: Number, recordPoints?: Number, admin?: IId, idSocket?: String, coins?: Number }) => {
+        const response = await userDao.register({ username, email, password, online, serverConnected, level, xp, xpUpLevel, recordPoints, admin, idSocket, coins })
         return response
     }
 
-    const findById = async({ _id }) => {
+    const findById = async ({ _id }: { _id: IId }) => {
         const response = await userDao.findById({ _id })
         return response
     }
 
-    const findByEmail = async({ email }) => {
+    const findByEmail = async ({ email }: { email: String }) => {
         const response = await userDao.findByEmail({ email })
         return response
     }
 
-    const findByIdSocket = async({ idSocket }) => {
+    const findByIdSocket = async ({ idSocket }: { idSocket: String }) => {
         const response = await userDao.findByIdSocket({ idSocket })
         return response
     }
 
-    const findByUsername = async({ username }) => {
+    const findByUsername = async ({ username }: { username: String }) => {
         const response = await userDao.findByUsername({ username })
         return response
     }
 
-    const findUsersByServer = async({ server }) => {
+    const findUsersByServer = async ({ server }: { server: IId }) => {
         const response = await userDao.listUsersByServer({ server })
         return response
     }
 
-    const findUsersOnline = async() => {
+    const findUsersOnline = async () => {
         const response = await userDao.listUsersOnline()
         return response
     }

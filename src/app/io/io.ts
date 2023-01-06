@@ -1,6 +1,6 @@
 import { Server } from "socket.io"
-import server from "../server/index.js"
 import dotenv from "dotenv"
+import server from "../server/index.js"
 dotenv.config()
 
 export const io = new Server(server, {
@@ -9,9 +9,8 @@ export const io = new Server(server, {
     }
 })
 
-export const getSockets = async() => {
-    const response = await io.fetchSockets().then(res => {
-
+export const getSockets = async () => {
+    const response: { sockets?: any[], error?: any } = await io.fetchSockets().then(res => {
         return { sockets: res }
     }).catch(error => {
         console.log(error);
@@ -21,10 +20,10 @@ export const getSockets = async() => {
     return response
 }
 
-export const getSocket = async(key) => {
+export const getSocket = async (key: String) => {
     const responseSockets = await getSockets()
 
-    if (responseSockets.error) { return responseSockets }
+    if (responseSockets.error) { return { ...responseSockets, valueOf: false } }
 
     const { sockets } = responseSockets
 
@@ -33,7 +32,7 @@ export const getSocket = async(key) => {
     return { socket, valueOf: socket != undefined }
 }
 
-export const socketJoinRoom = async({ idSocket, keyRoom }) => {
+export const socketJoinRoom = async ({ idSocket, keyRoom }: { idSocket: String, keyRoom: String }) => {
     const responseSocket = await getSocket(idSocket)
 
     if (!responseSocket.valueOf) { return { error: { msg: "Host not defined", system: true }, valueOf: false } }
@@ -47,7 +46,7 @@ export const socketJoinRoom = async({ idSocket, keyRoom }) => {
     return { success: { msg: "Host joined room successfully", system: true }, valueOf: true }
 }
 
-export const socketLeaveRoom = async({ idSocket }) => {
+export const socketLeaveRoom = async ({ idSocket }: { idSocket: String }) => {
     const responseSocket = await getSocket(idSocket)
 
     if (!responseSocket.valueOf) { return { error: { msg: "Host not defined", system: true }, valueOf: false } }
@@ -59,6 +58,6 @@ export const socketLeaveRoom = async({ idSocket }) => {
     return { success: { msg: "Host leave room successfully", system: true }, valueOf: true }
 }
 
-export const ioEmit = ({ ev = "", room = "", data = {} }) => {
+export const ioEmit = ({ ev = "", room = "", data = {} }: { ev: String, room: any, data: any }) => {
     !room ? io.emit(`${ev}`, data) : io.to(`${room}`).emit(`${ev}`, data)
 }

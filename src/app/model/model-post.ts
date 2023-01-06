@@ -1,6 +1,14 @@
-import mongoose from "../../database/index.js"
+import { IId, mongoose } from "../../database/index.js"
 
-const PostSchema = mongoose.Schema({
+export interface IPost extends mongoose.Document {
+    chat: IId
+    user?: IId
+    body: String
+    info?: Boolean
+    createAt?: Date
+}
+
+const PostSchema = new mongoose.Schema<IPost>({
     chat: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Chat",
@@ -25,6 +33,4 @@ const PostSchema = mongoose.Schema({
     }
 })
 
-const Post = mongoose.model("Post", PostSchema)
-
-export default Post
+export const Post = mongoose.model("Post", PostSchema)

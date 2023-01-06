@@ -1,3 +1,4 @@
+import { IId } from "../../database/index.js"
 import { getSocket } from "../io/io.js"
 import FriendDao from "../model/dao-friend.js"
 import PostDao from "../model/dao-post.js"
@@ -14,10 +15,10 @@ export default function FriendControl() {
     const serverControl = ServerControl()
 
     // Use Cases
-    const sendInviteFriendship = async({ idSocket, to, token }) => {
+    const sendInviteFriendship = async ({ idSocket, to, token }: { idSocket: String, to: IId, token: String }) => {
         const authValid = await validToken(token, idSocket)
 
-        if (!authValid.valueOf) { return authValid }
+        if (!authValid.user) { return authValid }
 
         const { user: from } = authValid
 
@@ -40,18 +41,19 @@ export default function FriendControl() {
 
         const response = await registerFriend({ users: [from._id, to], from: from._id, to })
 
-        if (response.error) { return { error: { msg: "Cannot send invite friend", system: true }, status: 400 } }
+        if (!response.invite) { return { error: { msg: "Cannot send invite friend", system: true }, status: 400 } }
 
         const { invite } = response
 
         const { user } = responseRecipient
 
-        const responseSocketTo = await getSocket(from.idSocket)
-        const responseSocketFrom = await getSocket(user.idSocket)
+        const responseSocketTo = await getSocket(from?.idSocket || "")
+        const responseSocketFrom = await getSocket(user?.idSocket || "")
 
         responseSocketTo.valueOf && responseSocketTo.socket.emit("$/friends/send-invite", { msg: "User send invite" })
         responseSocketFrom.valueOf && responseSocketFrom.socket.emit("$/friends/send-invite", { msg: "User send invite" })
 
+        //@ts-expect-error
         user.password = undefined
         user.passwordResetToken = undefined
         user.passwordResetExpires = undefined
@@ -68,7 +70,7 @@ export default function FriendControl() {
         return { invite: { user, _id: invite._id }, success: { msg: "Send invite friendship successfully", system: true }, status: 200 }
     }
 
-    const acceptInviteFriendship = async({ _id, idSocket, token }) => {
+    const acceptInviteFriendship = async ({ _id, idSocket, token }: { _id: IId, idSocket: String, token: String }) => {
         const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
@@ -81,13 +83,13 @@ export default function FriendControl() {
 
         const { friendship } = response
 
-        if (`${friendship.to}` != `${recipient._id}`) { return { error: { msg: "Access denied", system: true }, status: 401 } }
+        if (`${friendship.to}` != `${recipient?._id}`) { return { error: { msg: "Access denied", system: true }, status: 401 } }
 
         if (!friendship.pending) { return { error: { msg: `Invite already ${friendship.accepted ? "accepted" : "denied"}`, system: true }, status: 401 } }
 
-        const responseChat = await chatControl.createChat({ idFriend: friendship._id })
+        const responseChat = await chatControl.createChat({ idFriend: friendship?._id || "" })
 
-        if (responseChat.error) { return { error: { msg: "Cannot accept invite", system: true }, status: 401 } }
+        if (!responseChat.chat) { return { error: { msg: "Cannot accept invite", system: true }, status: 401 } }
 
         const responseSender = await userDao.findById({ _id: friendship.from })
 
@@ -97,16 +99,16 @@ export default function FriendControl() {
 
         await friendship.save()
 
-        const responseSocketFrom = responseSender.user ? await getSocket(responseSender.user.idSocket) : { valueOf: false }
-        const responseSocketTo = await getSocket(recipient.idSocket)
+        const responseSocketFrom = responseSender.user ? await getSocket(responseSender.user.idSocket || "") : { valueOf: false }
+        const responseSocketTo = await getSocket(recipient?.idSocket || "")
 
-        responseSocketFrom.valueOf && responseSocketFrom.socket.emit("$/friends/accept-invite", { msg: `User ${recipient.username} accept invite` })
-        responseSocketTo.valueOf && responseSocketTo.socket.emit("$/friends/accept-invite", { msg: `User ${recipient.username} accept invite` })
+        responseSocketFrom.valueOf && responseSocketFrom.socket.emit("$/friends/accept-invite", { msg: `User ${recipient?.username} accept invite` })
+        responseSocketTo.valueOf && responseSocketTo.socket.emit("$/friends/accept-invite", { msg: `User ${recipient?.username} accept invite` })
 
         return { success: { msg: "Accept invite successfully", system: true }, status: 200 }
     }
 
-    const removeFriendship = async({ _id, idSocket, token }) => {
+    const removeFriendship = async ({ _id, idSocket, token }: { _id: IId, idSocket: String, token: String }) => {
         const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
@@ -126,8 +128,8 @@ export default function FriendControl() {
 
         await friendship.remove()
 
-        const responseSocketTo = responseTo.user ? await getSocket(responseTo.user.idSocket) : { valueOf: false }
-        const responseSocketFrom = responseFrom.user ? await getSocket(responseFrom.user.idSocket) : { valueOf: false }
+        const responseSocketTo = responseTo.user ? await getSocket(responseTo.user?.idSocket || "") : { valueOf: false }
+        const responseSocketFrom = responseFrom.user ? await getSocket(responseFrom.user?.idSocket || "") : { valueOf: false }
 
         responseSocketTo.valueOf && responseSocketTo.socket.emit("$/friends/remove-friendship", { msg: "User remove friendship" })
         responseSocketFrom.valueOf && responseSocketFrom.socket.emit("$/friends/remove-friendship", { msg: "User remove friendship" })
@@ -135,7 +137,7 @@ export default function FriendControl() {
         return { success: { msg: "Friendship removed successfully", system: true }, status: 200 }
     }
 
-    const cancelInvite = async({ _id, idSocket, token }) => {
+    const cancelInvite = async ({ _id, idSocket, token }: { _id: IId, idSocket: String, token: String }) => {
         const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
@@ -148,7 +150,7 @@ export default function FriendControl() {
 
         const { friendship } = response
 
-        if (`${friendship.from}` != `${user._id}`) { return { error: { msg: "Access denied", system: true }, status: 401 } }
+        if (`${friendship.from}` != `${user?._id}`) { return { error: { msg: "Access denied", system: true }, status: 401 } }
 
         if (!friendship.pending && friendship.accepted) { return { error: { msg: "Cannot cancel invite", system: true }, status: 401 } }
 
@@ -157,8 +159,8 @@ export default function FriendControl() {
 
         await friendship.remove()
 
-        const responseSocketTo = responseTo.user ? await getSocket(responseTo.user.idSocket) : { valueOf: false }
-        const responseSocketFrom = responseFrom.user ? await getSocket(responseFrom.user.idSocket) : { valueOf: false }
+        const responseSocketTo = responseTo.user ? await getSocket(responseTo.user?.idSocket || "") : { valueOf: false }
+        const responseSocketFrom = responseFrom.user ? await getSocket(responseFrom.user?.idSocket || "") : { valueOf: false }
 
         responseSocketTo.valueOf && responseSocketTo.socket.emit("$/friends/cancel-invite", { msg: "User cancel invite" })
         responseSocketFrom.valueOf && responseSocketFrom.socket.emit("$/friends/cancel-invite", { msg: "User cancel invite" })
@@ -166,7 +168,7 @@ export default function FriendControl() {
         return { success: { msg: "Invite canceled successfully", system: true }, status: 200 }
     }
 
-    const deniedInviteFriendship = async({ _id, idSocket, token }) => {
+    const deniedInviteFriendship = async ({ _id, idSocket, token }: { _id: IId, idSocket: String, token: String }) => {
         const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
@@ -175,11 +177,11 @@ export default function FriendControl() {
 
         const response = await findFriendshipById({ _id })
 
-        if (response.error) { return { error: { msg: "Invite not found", system: true }, status: 401 } }
+        if (!response.friendship) { return { error: { msg: "Invite not found", system: true }, status: 401 } }
 
         const { friendship } = response
 
-        if (`${friendship.to}` != `${user._id}`) { return { error: { msg: "Access denied", system: true }, status: 401 } }
+        if (`${friendship.to}` != `${user?._id}`) { return { error: { msg: "Access denied", system: true }, status: 401 } }
 
         if (!friendship.pending) { return { error: { msg: `Invite already ${friendship.accepted ? "accepted" : "denied"}`, system: true }, status: 401 } }
 
@@ -190,8 +192,8 @@ export default function FriendControl() {
 
         await friendship.save()
 
-        const responseSocketFrom = responseFrom.user ? await getSocket(responseFrom.user.idSocket) : { valueOf: false }
-        const responseSocketTo = await getSocket(user.idSocket)
+        const responseSocketFrom = responseFrom.user ? await getSocket(responseFrom.user?.idSocket || "") : { valueOf: false }
+        const responseSocketTo = await getSocket(user?.idSocket || "")
 
         responseSocketTo.valueOf && responseSocketTo.socket.emit("$/friends/denied-invite", { msg: "User denied invite" })
         responseSocketFrom.valueOf && responseSocketFrom.socket.emit("$/friends/denied-invite", { msg: "User denied invite" })
@@ -199,16 +201,16 @@ export default function FriendControl() {
         return { success: { msg: "Denied invite successfully", system: true }, status: 200 }
     }
 
-    const listFriendsById = async({ idSocket, token }) => {
+    const listFriendsById = async ({ idSocket, token }: { idSocket: String, token: String }) => {
         const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
 
         const { user } = authValid
 
-        const response = await findFriendsByIdUser(user)
+        const response = await findFriendsByIdUser({ _id: user?._id || "" })
 
-        if (response.error) { return { error: { msg: "Cannot get friends", system: true }, status: 401 } }
+        if (!response.friends) { return { error: { msg: "Cannot get friends", system: true }, status: 401 } }
 
         const { friends } = response
 
@@ -217,19 +219,23 @@ export default function FriendControl() {
         for (let i = 0; i < friends.length; i++) {
             const f = friends[i];
 
-            const { user: u } = `${f.users[0]}` != `${user._id}` ? await userDao.findById(f.users[0]): await userDao.findById(f.users[1])
+            const { user: u } = `${f.users[0]}` != `${user?._id}` ? await userDao.findById({ _id: f.users[0] }) : await userDao.findById({ _id: f.users[1] })
+
+            if (!u) { continue }
 
             const responseChat = await chatControl.getChatByFriend({ idFriend: f._id })
 
             const responseLastPost = responseChat.chat ? await postDao.findLastPost({ chat: responseChat.chat._id }) : { error: {} }
 
-            const responseServer = await serverControl.findById({ _id: u.serverConnected })
+            const responseServer = await serverControl.findById({ _id: u.serverConnected || null })
 
+            //@ts-expect-error
             u.password = undefined
             u.passwordResetToken = undefined
             u.passwordResetExpires = undefined
             u.authToken = undefined
             u.idSocket = undefined
+            //@ts-expect-error
             u.serverConnected = responseServer.server ? responseServer.server : { _id: u.serverConnected }
 
             if (!u.idAdmin) {
@@ -242,16 +248,16 @@ export default function FriendControl() {
         return { friends: users, status: 200 }
     }
 
-    const listInvitesPendingOnHold = async({ idSocket, token }) => {
+    const listInvitesPendingOnHold = async ({ idSocket, token }: { idSocket: String, token: String }) => {
         const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
 
         const { user } = authValid
 
-        const response = await findInvitesPendingOnHold(user)
+        const response = await findInvitesPendingOnHold({ _id: user?._id || "" })
 
-        if (response.error) { return { error: { msg: "Cannot get invites", system: true }, status: 401 } }
+        if (!response.invites) { return { error: { msg: "Cannot get invites", system: true }, status: 401 } }
 
         const { invites } = response
 
@@ -260,8 +266,11 @@ export default function FriendControl() {
         for (let i = 0; i < invites.length; i++) {
             const f = invites[i];
 
-            const { user: u } = `${f.users[0]}` != `${user._id}` ? await userDao.findById(f.users[0]): await userDao.findById(f.users[1])
+            const { user: u } = `${f.users[0]}` != `${user?._id}` ? await userDao.findById({ _id: f.users[0] }) : await userDao.findById({ _id: f.users[1] })
 
+            if (!u) { continue }
+
+            //@ts-expect-error
             u.password = undefined
             u.passwordResetToken = undefined
             u.passwordResetExpires = undefined
@@ -278,16 +287,16 @@ export default function FriendControl() {
         return { invites: users, status: 200 }
     }
 
-    const listInvitesPendingAwaiting = async({ idSocket, token }) => {
+    const listInvitesPendingAwaiting = async ({ idSocket, token }: { idSocket: String, token: String }) => {
         const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
 
         const { user } = authValid
 
-        const response = await findInvitesPendingAwaiting(user)
+        const response = await findInvitesPendingAwaiting({ _id: user?._id || "" })
 
-        if (response.error) { return { error: { msg: "Cannot get invites", system: true }, status: 401 } }
+        if (!response.invites) { return { error: { msg: "Cannot get invites", system: true }, status: 401 } }
 
         const { invites } = response
 
@@ -296,8 +305,11 @@ export default function FriendControl() {
         for (let i = 0; i < invites.length; i++) {
             const f = invites[i];
 
-            const { user: u } = `${f.users[0]}` != `${user._id}` ? await userDao.findById(f.users[0]): await userDao.findById(f.users[1])
+            const { user: u } = `${f.users[0]}` != `${user?._id}` ? await userDao.findById({ _id: f.users[0] }) : await userDao.findById({ _id: f.users[1] })
 
+            if (!u) { continue }
+
+            //@ts-expect-error
             u.password = undefined
             u.passwordResetToken = undefined
             u.passwordResetExpires = undefined
@@ -314,16 +326,16 @@ export default function FriendControl() {
         return { invites: users, status: 200 }
     }
 
-    const listInvitesDeniedByUser = async({ idSocket, token }) => {
+    const listInvitesDeniedByUser = async ({ idSocket, token }: { idSocket: String, token: String }) => {
         const authValid = await validToken(token, idSocket)
 
         if (!authValid.valueOf) { return authValid }
 
         const { user } = authValid
 
-        const response = await findInvitesDeniedByUser(user)
+        const response = await findInvitesDeniedByUser({ _id: user?._id || "" })
 
-        if (response.error) { return { error: { msg: "Cannot get invites", system: true }, status: 401 } }
+        if (!response.invites) { return { error: { msg: "Cannot get invites", system: true }, status: 401 } }
 
         const { invites } = response
 
@@ -332,8 +344,10 @@ export default function FriendControl() {
         for (let i = 0; i < invites.length; i++) {
             const f = invites[i];
 
-            const { user: u } = `${f.users[0]}` != `${user._id}` ? await userDao.findById(f.users[0]): await userDao.findById(f.users[1])
+            const { user: u } = `${f.users[0]}` != `${user?._id}` ? await userDao.findById({ _id: f.users[0] }) : await userDao.findById({ _id: f.users[1] })
 
+            if (!u) { continue }
+            //@ts-expect-error
             u.password = undefined
             u.passwordResetToken = undefined
             u.passwordResetExpires = undefined
@@ -351,42 +365,42 @@ export default function FriendControl() {
     }
 
     // DaoFriend
-    const registerFriend = async({ users, from, to }) => {
+    const registerFriend = async ({ users, from, to }: { users: IId[], from: IId, to: IId }) => {
         const response = await friendDao.register({ users, from, to })
         return response
     }
 
-    const findInvitesPendingOnHold = async({ _id }) => {
+    const findInvitesPendingOnHold = async ({ _id }: { _id: IId }) => {
         const response = await friendDao.findInvitesPendingOnHold({ _id })
         return response
     }
 
-    const findInvitesPendingAwaiting = async({ _id }) => {
+    const findInvitesPendingAwaiting = async ({ _id }: { _id: IId }) => {
         const response = await friendDao.findInvitesPendingAwaiting({ _id })
         return response
     }
 
-    const findInvitesDeniedByUser = async({ _id }) => {
+    const findInvitesDeniedByUser = async ({ _id }: { _id: IId }) => {
         const response = await friendDao.findInvitesDeniedByUser({ _id })
         return response
     }
 
-    const findFriendsByIdUser = async({ _id }) => {
+    const findFriendsByIdUser = async ({ _id }: { _id: IId }) => {
         const response = await friendDao.findFriendsByIdUser({ _id })
         return response
     }
 
-    const findFriendshipByChat = async({ idChat }) => {
+    const findFriendshipByChat = async ({ idChat }: { idChat: IId }) => {
         const response = await friendDao.findFriendshipByChat({ idChat })
         return response
     }
 
-    const findFriendshipByUsers = async({ users }) => {
+    const findFriendshipByUsers = async ({ users }: { users: IId[] }) => {
         const response = await friendDao.findFriendshipByUsers({ users })
         return response
     }
 
-    const findFriendshipById = async({ _id }) => {
+    const findFriendshipById = async ({ _id }: { _id: IId }) => {
         const response = await friendDao.findFriendshipById({ _id })
         return response
     }
