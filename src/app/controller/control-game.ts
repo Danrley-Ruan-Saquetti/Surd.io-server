@@ -1,23 +1,33 @@
 import { IId } from "../../database/index.js"
 import dataGame from "../game/data/data-game.js"
 import { IPlayer } from "../game/model/player.js"
+import UserDao from "../model/dao-user.js"
 import { IUser } from "../model/model-user.js"
+import { validToken } from "../util/token.service.js"
 
 export default function GameControl() {
+    const userDao = UserDao()
+
+    // Data
+    const getData = async ({ token, idSocket }: { token: String, idSocket: String }) => {
+        const authValid = await validToken(token, idSocket)
+
+        if (!authValid.user) { return null }
+
+        const { user } = authValid
+
+        return dataGame.getData({ idServer: user.serverConnected })
+    }
 
     // User
     const UserStartGame = ({ user, idServer = null }: { user: IUser, idServer?: IId }) => {
         const player = createPlayer(user)
-
-        console.log(dataGame.getData());
 
         return dataGame.addPlayer({ player, idServer: idServer ? idServer : user.serverConnected || null })
     }
 
     const UserQuitGame = ({ user, idServer = null }: { user: IUser, idServer?: IId }) => {
         const responseRemove = dataGame.removePlayer({ _id: user._id, idServer: idServer ? idServer : user.serverConnected || null })
-
-        console.log(dataGame.getData());
 
         return responseRemove
     }
@@ -50,5 +60,6 @@ export default function GameControl() {
     return {
         UserStartGame,
         UserQuitGame,
+        getData,
     }
 }

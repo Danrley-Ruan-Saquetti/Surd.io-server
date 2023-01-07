@@ -5,6 +5,7 @@ import ChatControl from "../controller/control-chat.js"
 import PostControl from "../controller/control-post.js"
 import FriendControl from "../controller/control-friend.js"
 import AdminControl from "../controller/control-admin.js"
+import GameControl from "../controller/control-game.js"
 
 const userControl = UserControl()
 const serverControl = ServerControl()
@@ -12,13 +13,14 @@ const chatControl = ChatControl()
 const postControl = PostControl()
 const friendControl = FriendControl()
 const adminControl = AdminControl()
+const gameControl = GameControl()
 
 io.on("connection", async (socket) => {
     const idSocket = socket.id
 
     await userControl.EUserConnect(idSocket)
 
-    const socketEmit = ({ ev = "", data = {} }) => {
+    const socketEmit = ({ ev = "", data = {} }: { ev: String, data: any }) => {
         socket.emit(`${ev}`, data)
     }
 
@@ -686,6 +688,43 @@ io.on("connection", async (socket) => {
         } catch (err) {
             console.log(err);
             socketEmit({ ev: "games/quit/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
+        }
+    })
+
+    socket.on("games/data", async (req) => {
+        try {
+            const { authToken } = req
+
+            const response = await gameControl.getData({ idSocket, token: authToken })
+
+            socketEmit({ ev: "games/data/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "games/data/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
+        }
+    })
+
+    socket.on("games/players/move", async (req) => {
+        try {
+            const { authToken } = req
+
+            const response = await userControl.EUserQuitGame({ idSocket, token: authToken })
+
+            const { status } = response
+
+            if (response.valueOf) {
+                //@ts-expect-error
+                response.valueOf = undefined
+            }
+            if (response.status) {
+                //@ts-expect-error
+                response.status = undefined
+            }
+
+            socketEmit({ ev: "games/players/move/res", data: response })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "games/players/move/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
         }
     })
 })

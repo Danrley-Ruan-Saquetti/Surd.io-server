@@ -12,7 +12,7 @@ export default function PostControl() {
     const userDao = UserDao()
     const friendDao = FriendDao()
 
-    const register = async ({ body = "", isServer = false, idChat = null, idServer = null, user = null, info = false }: { body: String, isServer: Boolean, idChat: IId, idServer: IId, user?: IId, info?: Boolean }) => {
+    const register = async ({ body = "", isServer = false, idChat = null, idServer = null, user = null, info = false }: { body: String, isServer: Boolean, idChat?: IId, idServer?: IId, user?: IId, info?: Boolean }) => {
         if (!body) { return { error: { msg: "Inform the body of post", body: true }, status: 400 } }
 
         const responseChat = !isServer ? await chatDao.findById({ _id: idChat }) : await chatDao.findByServer({ idServer })
@@ -47,8 +47,8 @@ export default function PostControl() {
         return { post, status: 200 }
     }
 
-    const systemSendPost = async ({ body = "", idChat = null, idServer = null }: { body: String, idChat?: IId, idServer?: IId }) => {
-        const response = await register({ body, idChat, isServer: !(!idChat), idServer, info: true })
+    const systemSendPost = async ({ body = "", idChat = null, idServer = null, isServer = true }: { body: String, idChat?: IId, idServer?: IId, isServer?: Boolean }) => {
+        const response = await register({ body, idChat, isServer, idServer, info: true })
 
         return response
     }

@@ -7,15 +7,13 @@ function DataGame() {
 
     // Data
     const getDataByServer = ({ _id }: { _id: IId }) => {
-        const data = games.servers.find(server => server._id == _id)
+        const data = games.servers.find(server => { return `${server._id}` == `${_id}` }) || null
 
-        return { data, valueOf: !(!data) }
+        return data
     }
 
     const getData = (options: { idServer?: IId } = { idServer: null }) => {
-        const data: IGame | IServer | null = options.idServer ? (function () {
-            return getDataByServer({ _id: options.idServer }).data || null
-        }()) : games
+        const data: IGame | IServer | null = options.idServer ? getDataByServer({ _id: options.idServer }) : games
 
         return data
     }
@@ -27,7 +25,7 @@ function DataGame() {
 
     // Server
     const getIndexServer = ({ _id }: { _id: IId }) => {
-        const index = games.servers.findIndex(server => server._id == _id)
+        const index = games.servers.findIndex(server => `${server._id}` == `${_id}`)
 
         return { index, valueOf: index > -1 }
     }
@@ -40,7 +38,7 @@ function DataGame() {
 
         const { index: indexServer } = serverIndex
 
-        const index = games.servers[indexServer].players.findIndex(player => player._id == _id)
+        const index = games.servers[indexServer].players.findIndex(player => `${player._id}` == `${_id}`)
 
         return { index, valueOf: index > -1, serverIndex: serverIndex.index }
     }
@@ -52,7 +50,7 @@ function DataGame() {
 
         const { index: indexServer } = serverIndex
 
-        const player = games.servers[indexServer].players.find(player => player._id == _id)
+        const player = games.servers[indexServer].players.find(player => `${player._id}` == `${_id}`)
 
         return { player, valueOf: !(!player), serverIndex: serverIndex.index }
     }

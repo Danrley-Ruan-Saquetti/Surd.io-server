@@ -85,7 +85,7 @@ export default function UserControl() {
 
                 await server.save()
 
-                responseOldServer.server && await postControl.systemSendPost({ body: "User " + user.username + (!server.isLobby ? " leave" : " enter " + responseServer.server.name), idServer: server._id })
+                const response = await postControl.systemSendPost({ body: "User " + user.username + (!server.isLobby ? " leave" : " enter " + responseServer.server.name), idServer: server._id })
 
                 ioEmit({ ev: `$/users/disconnected`, data: { msg: `User ${user.username} leave` }, room: `${server._id}` })
             }
@@ -122,7 +122,7 @@ export default function UserControl() {
 
         responseSocket.valueOf && responseSocket.socket.emit("$/users/current/update/serverConnected", { msg: "User enter server", user })
 
-        await postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: server._id })
+        const responseNotify = await postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: server._id })
 
         ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
 
