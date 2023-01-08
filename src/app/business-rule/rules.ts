@@ -37,3 +37,18 @@ export const RULES_SERVER = {
 export const RULES_POST = {
     LIMIT_LIST: 20
 }
+
+export const RULES_GAME = {
+    map: {
+        dimension: {
+            width: 800,
+            height: 800
+        }
+    },
+    player: {
+        dimension: {
+            width: 40,
+            height: 40
+        }
+    }
+}

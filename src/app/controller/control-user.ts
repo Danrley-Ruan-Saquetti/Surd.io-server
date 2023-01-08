@@ -12,6 +12,7 @@ import { generatedToken, validToken } from "../util/token.service.js"
 import { getSocket, ioEmit, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
 import { IId } from "../../database/index.js"
 import GameControl from "./control-game.js"
+import dataGame from "../game/data/data-game.js"
 
 export default function UserControl() {
     const userDao = UserDao()
@@ -673,7 +674,13 @@ export default function UserControl() {
 
         const responseGame = gameControl.UserStartGame({ user, idServer: _id })
 
-        if (!responseGame) { return { error: { msg: "Cannot connect server", system: true }, valueOf: false, status: 401 } }
+        if (!responseGame.valueOf) { return { error: { msg: "Cannot connect server", system: true }, valueOf: false, status: 401 } }
+
+        const responseSocket = await getSocket(idSocket)
+
+        ioEmit({ ev: "$/games/players/connected", data: { player: responseGame.player }, room: _id })
+
+        responseSocket.socket && responseSocket.socket.emit("$/games/players/current/data", dataGame.getData({ idServer: _id }))
 
         return responseConnectServer
     }
@@ -683,15 +690,23 @@ export default function UserControl() {
 
         if (!responseLobby.server) { return { error: { msg: "Lobby not found", system: true }, status: 404 } }
 
+        const responseUser = await findByIdSocket({ idSocket })
+
+        if (!responseUser.user) { return { error: { msg: "Cannot disconnect server", system: true }, status: 404 } }
+
+        const { serverConnected } = responseUser.user
+
         const responseConnectServer = await userConnectServer({ _id: responseLobby.server._id, idSocket, token })
 
         if (!responseConnectServer.valueOf || !responseConnectServer.user) { return responseConnectServer }
 
         const { user } = responseConnectServer
 
-        const responseGame = gameControl.UserQuitGame({ user })
+        const responseGame = gameControl.UserQuitGame({ user, idServer: serverConnected || null })
 
-        if (!responseGame) { return { error: { msg: "Cannot disconnect server", system: true }, valueOf: false, status: 401 } }
+        if (!responseGame.valueOf) { return { error: { msg: "Cannot disconnect server", system: true }, valueOf: false, status: 401 } }
+
+        ioEmit({ ev: "$/games/players/disconnected", data: { player: { _id: responseUser.user._id } }, room: responseUser.user.serverConnected })
 
         return responseConnectServer
     }

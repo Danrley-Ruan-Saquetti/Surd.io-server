@@ -3,9 +3,9 @@ import { IPlayer } from "./player.js";
 
 export interface IServer {
     _id: IId
-    players: IPlayer[]
+    players: any
 }
 
 export interface IGame {
-    servers: IServer[]
+    servers: any
 }

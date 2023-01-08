@@ -64,7 +64,7 @@ export default async function DataStart() {
 
         responseServers.servers && (function () {
             responseServers.servers.forEach(server => {
-                dataGame.addGame({ _id: server._id, players: [] })
+                dataGame.addGame({ _id: server._id, players: {} })
             })
         }())
     }

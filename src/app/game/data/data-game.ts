@@ -3,11 +3,11 @@ import { IGame, IServer } from "../model/game.js";
 import { IPlayer } from "../model/player.js";
 
 function DataGame() {
-    const games: IGame = { servers: [] }
+    const games: IGame = { servers: {} }
 
     // Data
     const getDataByServer = ({ _id }: { _id: IId }) => {
-        const data = games.servers.find(server => { return `${server._id}` == `${_id}` }) || null
+        const data = games.servers[`${_id}`] || null
 
         return data
     }
@@ -20,61 +20,28 @@ function DataGame() {
 
     // Game
     const addGame = (game: IServer) => {
-        games.servers.push(game)
+        games.servers[`${game._id}`] = game
+        console.log(games);
+
     }
 
     // Server
-    const getIndexServer = ({ _id }: { _id: IId }) => {
-        const index = games.servers.findIndex(server => `${server._id}` == `${_id}`)
-
-        return { index, valueOf: index > -1 }
-    }
 
     // Player
-    const getIndexPlayer = ({ _id, idServer }: { _id: IId, idServer: IId }) => {
-        const serverIndex = getIndexServer({ _id: idServer })
-
-        if (!serverIndex.valueOf) { return { index: -1, valueOf: false, serverIndex: -1 } }
-
-        const { index: indexServer } = serverIndex
-
-        const index = games.servers[indexServer].players.findIndex(player => `${player._id}` == `${_id}`)
-
-        return { index, valueOf: index > -1, serverIndex: serverIndex.index }
-    }
-
     const getPlayer = ({ _id, idServer }: { _id: IId, idServer: IId }) => {
-        const serverIndex = getIndexServer({ _id: idServer })
+        const player = games.servers[`${idServer}`].players[`${_id}`]
 
-        if (!serverIndex.valueOf) { return { player: null, valueOf: false, serverIndex: -1 } }
-
-        const { index: indexServer } = serverIndex
-
-        const player = games.servers[indexServer].players.find(player => `${player._id}` == `${_id}`)
-
-        return { player, valueOf: !(!player), serverIndex: serverIndex.index }
+        return { player, valueOf: !(!player) }
     }
 
     const addPlayer = ({ player, idServer }: { player: IPlayer, idServer: IId }) => {
-        const serverIndex = getIndexServer({ _id: idServer })
-
-        if (!serverIndex.valueOf) { return false }
-
-        const { index } = serverIndex
-
-        games.servers[index].players.push(player)
+        games.servers[`${idServer}`].players[`${player._id}`] = player
 
         return true
     }
 
     const removePlayer = ({ _id, idServer }: { _id: IId, idServer: IId }) => {
-        const userIndex = getIndexPlayer({ _id, idServer })
-
-        if (!userIndex.valueOf) { return false }
-
-        const { index, serverIndex } = userIndex
-
-        games.servers[serverIndex].players.splice(index, 1)
+        delete games.servers[`${idServer}`].players[`${_id}`]
 
         return true
     }

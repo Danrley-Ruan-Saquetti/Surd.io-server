@@ -1,4 +1,5 @@
 import { IId } from "../../database/index.js"
+import { RULES_GAME } from "../business-rule/rules.js"
 import dataGame from "../game/data/data-game.js"
 import { IPlayer } from "../game/model/player.js"
 import UserDao from "../model/dao-user.js"
@@ -23,13 +24,13 @@ export default function GameControl() {
     const UserStartGame = ({ user, idServer = null }: { user: IUser, idServer?: IId }) => {
         const player = createPlayer(user)
 
-        return dataGame.addPlayer({ player, idServer: idServer ? idServer : user.serverConnected || null })
+        return { valueOf: dataGame.addPlayer({ player, idServer: idServer ? idServer : user.serverConnected || null }), player }
     }
 
-    const UserQuitGame = ({ user, idServer = null }: { user: IUser, idServer?: IId }) => {
+    const UserQuitGame = ({ user, idServer = null }: { user: IUser, idServer: IId }) => {
         const responseRemove = dataGame.removePlayer({ _id: user._id, idServer: idServer ? idServer : user.serverConnected || null })
 
-        return responseRemove
+        return { valueOf: responseRemove }
     }
 
     // Player
@@ -38,14 +39,14 @@ export default function GameControl() {
             _id: user._id,
             coins: 0,
             defense: 0,
-            dimension: { height: 0, width: 0 },
+            dimension: RULES_GAME.player.dimension,
             health: 100,
             keysMove: { DOWN: false, LEFT: false, RIGHT: false, UP: false },
             lastKeyMove: { horizontal: "", vertical: "" },
             level: 1,
             maxHealth: 100,
             points: 0,
-            position: { x: 0, y: 0 },
+            position: { x: Math.round(RULES_GAME.map.dimension.width - RULES_GAME.player.dimension.width) + 1, y: Math.round(RULES_GAME.map.dimension.height - RULES_GAME.player.dimension.height) + 1 },
             powerUps: { damage: 0, defense: 0, health: 0, size: 0, speed: 0 },
             speed: { x: 0, y: 0 },
             speedMaster: 0,
