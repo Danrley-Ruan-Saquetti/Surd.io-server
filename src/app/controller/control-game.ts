@@ -1,13 +1,14 @@
 import { IId } from "../../database/index.js"
-import { RULES_GAME } from "../business-rule/rules.js"
 import dataGame from "../game/data/data-game.js"
 import { IPlayer } from "../game/model/player.js"
-import UserDao from "../model/dao-user.js"
 import { IUser } from "../model/model-user.js"
 import { validToken } from "../util/token.service.js"
+import PlayerControl from "./control-player.js"
+import XpControl from "./control-xp.js"
 
 export default function GameControl() {
-    const userDao = UserDao()
+    const playerControl = PlayerControl()
+    const xpControl = XpControl()
 
     // Data
     const getData = async ({ token, idSocket }: { token: String, idSocket: String }) => {
@@ -17,50 +18,53 @@ export default function GameControl() {
 
         const { user } = authValid
 
-        return dataGame.getData({ idServer: user.serverConnected })
+        const { player } = dataGame.getPlayer({ idServer: user.serverConnected || null, idSocket })
+
+        return { data: dataGame.getDataByServer({ _id: user.serverConnected || null }), mapKeys: player.mapKeys }
+    }
+
+    // Update
+    const update = (idServer: IId) => {
+        Object.keys(dataGame.getDataByServer({ _id: idServer }).players).map(key => {
+            const player: IPlayer = dataGame.getDataByServer({ _id: idServer }).players[key]
+
+            playerControl.updatePositionPlayer({ player })
+        })
     }
 
     // User
     const UserStartGame = ({ user, idServer = null }: { user: IUser, idServer?: IId }) => {
-        const player = createPlayer(user)
+        const response = playerControl.createPlayer(user, idServer)
 
-        return { valueOf: dataGame.addPlayer({ player, idServer: idServer ? idServer : user.serverConnected || null }), player }
+        return response
     }
 
-    const UserQuitGame = ({ user, idServer = null }: { user: IUser, idServer: IId }) => {
-        const responseRemove = dataGame.removePlayer({ _id: user._id, idServer: idServer ? idServer : user.serverConnected || null })
+    const UserQuitGame = ({ idSocket, idServer }: { idSocket: String, idServer: IId }) => {
+        const responseRemove = playerControl.quitPlayer({ idSocket, idServer })
 
         return { valueOf: responseRemove }
     }
 
     // Player
-    const createPlayer = (user: IUser) => {
-        const player: IPlayer = {
-            _id: user._id,
-            coins: 0,
-            defense: 0,
-            dimension: RULES_GAME.player.dimension,
-            health: 100,
-            keysMove: { DOWN: false, LEFT: false, RIGHT: false, UP: false },
-            lastKeyMove: { horizontal: "", vertical: "" },
-            level: 1,
-            maxHealth: 100,
-            points: 0,
-            position: { x: Math.round(RULES_GAME.map.dimension.width - RULES_GAME.player.dimension.width) + 1, y: Math.round(RULES_GAME.map.dimension.height - RULES_GAME.player.dimension.height) + 1 },
-            powerUps: { damage: 0, defense: 0, health: 0, size: 0, speed: 0 },
-            speed: { x: 0, y: 0 },
-            speedMaster: 0,
-            upgradesPU: 0,
-            xp: 0,
-            xpUpLevel: 0
-        }
+    const mapKeys = { // Temporary
+        keysValid: { w: true, a: true, s: true, d: true }
+    }
 
-        return player
+    const movePlayer = (data: { idSocket: String, idServer: IId, data: { key: String, action: "keyUp" | "keyDown" } }) => {
+        playerControl.movePlayer(data)
+    }
+
+    // Xp
+    const createXp = (idServer: IId) => {
+        return xpControl.createXp(idServer)
     }
 
     return {
+        getData,
+        update,
         UserStartGame,
         UserQuitGame,
-        getData,
+        movePlayer,
+        createXp,
     }
 }

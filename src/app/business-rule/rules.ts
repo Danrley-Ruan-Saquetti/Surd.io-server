@@ -39,10 +39,13 @@ export const RULES_POST = {
 }
 
 export const RULES_GAME = {
+    game: {
+        FPS: 1000 / 120
+    },
     map: {
         dimension: {
-            width: 800,
-            height: 800
+            width: 1000,
+            height: 1000
         }
     },
     player: {
@@ -50,5 +53,14 @@ export const RULES_GAME = {
             width: 40,
             height: 40
         }
+    },
+    xps: {
+        intervalNew: 1000 / 2,
+        types: [
+            { dimension: { width: 10, height: 10 }, value: 2, color: "", tx: 50 },
+            { dimension: { width: 15, height: 15 }, value: 5, color: "", tx: 80 },
+            { dimension: { width: 20, height: 20 }, value: 10, color: "", tx: 95 },
+            { dimension: { width: 25, height: 25 }, value: 20, color: "", tx: 0 },
+        ]
     }
 }

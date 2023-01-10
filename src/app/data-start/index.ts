@@ -64,23 +64,26 @@ export default async function DataStart() {
 
         responseServers.servers && (function () {
             responseServers.servers.forEach(server => {
-                dataGame.addGame({ _id: server._id, players: {} })
+                dataGame.addGame({ _id: server._id, players: {}, xps: {} })
             })
         }())
     }
 
-    serverData()
-    userData()
-    postData()
-    gameDate()
+    const postInfoRestart = async () => {
+        const responseServers = await serverDao.listAll()
 
-    const responseServers = await serverDao.listAll()
+        responseServers.servers && responseServers.servers.forEach(async (server) => {
+            const responseChats = await chatDao.findByServer({ idServer: server._id })
 
-    responseServers.servers && responseServers.servers.forEach(async (server) => {
-        const responseChats = await chatDao.findByServer({ idServer: server._id })
+            responseChats.chat && (function () {
+                postDao.register({ body: "Server Restarted", chat: responseChats.chat._id, info: true })
+            }())
+        })
+    }
 
-        responseChats.chat && (function () {
-            postDao.register({ body: "Server Restarted", chat: responseChats.chat._id, info: true })
-        }())
-    })
+    await serverData()
+    await userData()
+    await postData()
+    await gameDate()
+    await postInfoRestart()
 }

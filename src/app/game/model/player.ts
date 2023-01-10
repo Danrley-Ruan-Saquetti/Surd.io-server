@@ -2,20 +2,27 @@ import { IId } from "../../../database/index.js"
 
 export interface IPlayer {
     _id: IId
-    level: Number
-    health: Number
-    maxHealth: Number
-    xp: Number
-    xpUpLevel: Number
-    defense: Number
-    coins: Number
-    points: Number
-    position: { x: Number, y: Number }
-    speed: { x: Number, y: Number }
-    speedMaster: Number
-    dimension: { width: Number, height: Number }
+    idSocket: String
+    idServer: IId
+    username: String
+    level: number
+    health: number
+    maxHealth: number
+    xp: number
+    xpUpLevel: number
+    defense: number
+    coins: number
+    points: number
+    position: { x: number, y: number }
+    speed: { x: number, y: number }
+    speedMaster: number
+    dimension: { width: number, height: number }
     keysMove: { UP: Boolean, DOWN: Boolean, LEFT: Boolean, RIGHT: Boolean }
-    lastKeyMove: { vertical: String, horizontal: String }
-    upgradesPU: Number
-    powerUps: { damage: Number, health: Number, defense: Number, size: Number, speed: Number }
+    lastKeyMove: { vertical: "UP" | "DOWN" | "", horizontal: "RIGHT" | "LEFT" | "" }
+    mapKeys: {
+        key: String
+        index: number
+    }[]
+    upgradesPU: number
+    powerUps: { damage: number, health: number, defense: number, size: number, speed: number }
 }

@@ -706,22 +706,9 @@ io.on("connection", async (socket) => {
 
     socket.on("games/players/move", async (req) => {
         try {
-            const { authToken } = req
+            const { data, idServer } = req
 
-            const response = await userControl.EUserQuitGame({ idSocket, token: authToken })
-
-            const { status } = response
-
-            if (response.valueOf) {
-                //@ts-expect-error
-                response.valueOf = undefined
-            }
-            if (response.status) {
-                //@ts-expect-error
-                response.status = undefined
-            }
-
-            socketEmit({ ev: "games/players/move/res", data: response })
+            gameControl.movePlayer({ idSocket, idServer, data })
         } catch (err) {
             console.log(err);
             socketEmit({ ev: "games/players/move/res", data: { error: { msg: "Cannot get invites denied", system: true } } })

@@ -12,7 +12,6 @@ import { generatedToken, validToken } from "../util/token.service.js"
 import { getSocket, ioEmit, socketJoinRoom, socketLeaveRoom } from "../io/io.js"
 import { IId } from "../../database/index.js"
 import GameControl from "./control-game.js"
-import dataGame from "../game/data/data-game.js"
 
 export default function UserControl() {
     const userDao = UserDao()
@@ -636,6 +635,10 @@ export default function UserControl() {
             //@ts-expect-error
             responseServer.server.playersOnline--
             await responseServer.server.save()
+
+            if (!responseServer.server.isLobby) {
+                const responseGame = gameControl.UserQuitGame({ idSocket, idServer: serverConnected || null })
+            }
         }
 
         await postControl.systemSendPost({ body: `User ${user.username} disconnected`, idServer: serverConnected || null })
@@ -672,15 +675,17 @@ export default function UserControl() {
 
         const { user } = responseConnectServer
 
+        user.idSocket = idSocket
+
         const responseGame = gameControl.UserStartGame({ user, idServer: _id })
 
         if (!responseGame.valueOf) { return { error: { msg: "Cannot connect server", system: true }, valueOf: false, status: 401 } }
 
         const responseSocket = await getSocket(idSocket)
 
-        ioEmit({ ev: "$/games/players/connected", data: { player: responseGame.player }, room: _id })
+        const data = await gameControl.getData({ idSocket, token })
 
-        responseSocket.socket && responseSocket.socket.emit("$/games/players/current/data", dataGame.getData({ idServer: _id }))
+        responseSocket.socket && responseSocket.socket.emit("$/games/players/current/data", data)
 
         return responseConnectServer
     }
@@ -702,11 +707,9 @@ export default function UserControl() {
 
         const { user } = responseConnectServer
 
-        const responseGame = gameControl.UserQuitGame({ user, idServer: serverConnected || null })
+        const responseGame = gameControl.UserQuitGame({ idSocket, idServer: serverConnected || null })
 
         if (!responseGame.valueOf) { return { error: { msg: "Cannot disconnect server", system: true }, valueOf: false, status: 401 } }
-
-        ioEmit({ ev: "$/games/players/disconnected", data: { player: { _id: responseUser.user._id } }, room: responseUser.user.serverConnected })
 
         return responseConnectServer
     }
