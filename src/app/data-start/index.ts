@@ -3,6 +3,7 @@ import ChatDao from "../model/dao-chat.js"
 import UserDao from "../model/dao-user.js"
 import PostDao from "../model/dao-post.js"
 import dataGame from "../game/data/data-game.js"
+import { RULES_GAME } from "../business-rule/rules.js"
 
 const serverDao = ServerDao()
 const chatDao = ChatDao()
@@ -64,7 +65,7 @@ export default async function DataStart() {
 
         responseServers.servers && (function () {
             responseServers.servers.forEach(server => {
-                dataGame.addGame({ _id: server._id, players: {}, xps: {} })
+                dataGame.addGame({ _id: server._id, players: [], xps: [], map: {dimension: RULES_GAME.map.dimension} })
             })
         }())
     }

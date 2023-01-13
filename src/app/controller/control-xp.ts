@@ -12,7 +12,7 @@ export default function XpControl() {
         const response = dataGame.addXp({ xp, idServer })
 
         if (response) {
-            ioEmit({ ev: "$/games/xps/create", data: { xp }, room: idServer })
+            ioEmit({ ev: "$/games/xps/update", data: { xps: dataGame.getDataByServer({ _id: idServer }).xps }, room: idServer })
         }
 
         return response

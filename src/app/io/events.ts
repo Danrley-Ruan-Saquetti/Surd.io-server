@@ -700,7 +700,7 @@ io.on("connection", async (socket) => {
             socketEmit({ ev: "games/data/res", data: response })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "games/data/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
+            socketEmit({ ev: "games/data/res", data: { error: { msg: "Cannot get data game", system: true } } })
         }
     })
 
@@ -711,7 +711,18 @@ io.on("connection", async (socket) => {
             gameControl.movePlayer({ idSocket, idServer, data })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "games/players/move/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
+            socketEmit({ ev: "games/players/move/res", data: { error: { msg: "Cannot move player", system: true } } })
+        }
+    })
+
+    socket.on("games/players/power-ups/upgrade", async (req) => {
+        try {
+            const { data, idServer } = req
+
+            gameControl.upgradePU({ idSocket, idServer, powerUp: data })
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "games/players/move/res", data: { error: { msg: "Cannot upgrade power up", system: true } } })
         }
     })
 })

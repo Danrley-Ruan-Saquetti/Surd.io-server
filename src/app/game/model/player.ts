@@ -6,6 +6,8 @@ export interface IPlayer {
     idServer: IId
     username: String
     level: number
+    damage: number
+    criticalDamage: number
     health: number
     maxHealth: number
     xp: number
@@ -19,10 +21,25 @@ export interface IPlayer {
     dimension: { width: number, height: number }
     keysMove: { UP: Boolean, DOWN: Boolean, LEFT: Boolean, RIGHT: Boolean }
     lastKeyMove: { vertical: "UP" | "DOWN" | "", horizontal: "RIGHT" | "LEFT" | "" }
-    mapKeys: {
-        key: String
-        index: number
-    }[]
+    mapKeys: { key: String, index: number }[]
     upgradesPU: number
-    powerUps: { damage: number, health: number, defense: number, size: number, speed: number }
+    contAlreadyUpdatePU: number
+    projectile: {
+        speed: number
+        size: number
+        range: number
+        reload: number
+    }
+    powerUps: {
+        damage: number
+        criticalDamage: number
+        health: number
+        defense: number
+        size: number
+        speed: number
+        projectileSpeed: number
+        projectileSize: number
+        projectileRange: number
+        projectileReload: number
+    }
 }

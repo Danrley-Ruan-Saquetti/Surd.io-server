@@ -4,11 +4,12 @@ import { IPlayer } from "../model/player.js";
 import { IXp } from "../model/xp.js";
 
 function DataGame() {
-    const games: IGame = { servers: {} }
+    const games: IGame = { servers: [] }
+    const indexes: any = {}
 
     // Data
     const getDataByServer = ({ _id }: { _id: IId }) => {
-        const data: IServer = games.servers[`${_id}`] || null
+        const data = games.servers[indexes[`${_id}`]]
 
         return data
     }
@@ -19,19 +20,30 @@ function DataGame() {
 
     // Game
     const addGame = (game: IServer) => {
-        games.servers[`${game._id}`] = game
+        indexes[`${game._id}`] = games.servers.length
+        games.servers.push(game)
     }
 
     // Player
     const getPlayer = ({ idSocket, idServer }: { idSocket: String, idServer: IId }) => {
-        const player: IPlayer = games.servers[`${idServer}`].players[`${idSocket}`]
+        const response: { player: IPlayer | null, index: number } = (function () {
+            for (let i = 0; i < getDataByServer({ _id: idServer }).players.length; i++) {
+                const player = getDataByServer({ _id: idServer }).players[i];
 
-        return { player, valueOf: !(!player) }
+                if (player.idSocket != idSocket) { continue }
+
+                return { player, index: i }
+            }
+
+            return { player: null, index: -1 }
+        }())
+
+        return response
     }
 
     const addPlayer = ({ player, idServer }: { player: IPlayer, idServer: IId }) => {
         try {
-            games.servers[`${idServer}`].players[`${player.idSocket}`] = player
+            games.servers[indexes[`${idServer}`]].players.push(player)
 
             return true
         } catch (err) {
@@ -42,7 +54,11 @@ function DataGame() {
 
     const removePlayer = ({ idSocket, idServer }: { idSocket: String, idServer: IId }) => {
         try {
-            delete games.servers[`${idServer}`].players[`${idSocket}`]
+            const { index } = getPlayer({ idServer, idSocket })
+
+            if (index == -1) { return false }
+
+            games.servers[indexes[`${idServer}`]].players.splice(index, 1)
 
             return true
         } catch (err) {
@@ -53,7 +69,7 @@ function DataGame() {
 
     const updatePlayer = ({ player }: { player: IPlayer }) => {
         try {
-            games.servers[`${player.idServer}`].players[`${player.idSocket}`] = player
+            games.servers[indexes[`${player.idServer}`]].players[getPlayer({ idSocket: player.idSocket, idServer: player.idServer }).index] = player
 
             return true
         } catch (err) {
@@ -64,14 +80,24 @@ function DataGame() {
 
     // Xp
     const getXp = ({ _id, idServer }: { _id: String, idServer: IId }) => {
-        const xp: IXp = games.servers[`${idServer}`].xps[`${_id}`]
+        const response: { xp: IXp | null, index: number } = (function () {
+            for (let i = 0; i < games.servers[indexes[`${idServer}`]].xps.length; i++) {
+                const xp = games.servers[indexes[`${idServer}`]].xps[i];
 
-        return { xp, valueOf: !(!xp) }
+                if (xp._id != _id) { continue }
+
+                return { xp, index: i }
+            }
+
+            return { xp: null, index: -1 }
+        }())
+
+        return response
     }
 
     const addXp = ({ xp, idServer }: { xp: IXp, idServer: IId }) => {
         try {
-            games.servers[`${idServer}`].xps[`${xp._id}`] = xp
+            games.servers[indexes[`${idServer}`]].xps.push(xp)
 
             return true
         } catch (err) {
@@ -82,7 +108,11 @@ function DataGame() {
 
     const removeXp = ({ _id, idServer }: { _id: String, idServer: IId }) => {
         try {
-            delete games.servers[`${idServer}`].xps[`${_id}`]
+            const { index } = getXp({ idServer, _id })
+
+            if (index == -1) { return false }
+
+            games.servers[indexes[`${idServer}`]].xps.splice(index, 1)
 
             return true
         } catch (err) {

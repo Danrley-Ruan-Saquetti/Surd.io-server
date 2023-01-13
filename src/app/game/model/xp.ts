@@ -5,7 +5,7 @@ export interface IXp {
     idServer: IId
     position: { x: number, y: number }
     dimension: { width: number, height: number }
-    value: Number
-    level: Number
+    value: number
+    level: number
     color: String
 }

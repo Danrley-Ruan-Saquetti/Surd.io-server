@@ -2,10 +2,34 @@ import { IId } from "../../database/index.js"
 import { RULES_GAME } from "../business-rule/rules.js"
 import dataGame from "../game/data/data-game.js"
 import { IPlayer } from "../game/model/player"
-import { ioEmit } from "../io/io.js"
+import { ioEmit, getSocket } from "../io/io.js"
 import { IUser } from "../model/model-user"
 
 export default function PlayerControl() {
+
+    const notifyCurrentPlayer = async (actions: String[], idSocket: String, data: any) => {
+        const response = await getSocket(idSocket)
+
+        if (response.socket) {
+            const { socket } = response
+
+            for (let i = 0; i < actions.length; i++) {
+                const action = actions[i]
+
+                socket.emit(`$/games/players/current/${action}`, data)
+            }
+        }
+    }
+
+    const validUpgrade = ({ player, powerUp }: { player: IPlayer, powerUp: "damage" | "health" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" }) => {
+        if (player.upgradesPU <= 0) { return false }
+
+        if (player.contAlreadyUpdatePU >= RULES_GAME.powerUp.maxUpgrades) { return false }
+
+        if (player.powerUps[powerUp] >= RULES_GAME.powerUp.lengthUpgradesPU) { return false }
+
+        return true
+    }
 
     // Data
     const addPlayer = ({ player, idServer }: { player: IPlayer, idServer: IId }) => {
@@ -36,22 +60,47 @@ export default function PlayerControl() {
             idServer: idServer,
             username: user.username,
             coins: 0,
-            defense: 0,
-            dimension: RULES_GAME.player.dimension,
-            health: 100,
+            defense: RULES_GAME.player.defense,
+            dimension: { height: RULES_GAME.player.dimension.height, width: RULES_GAME.player.dimension.width },
+            damage: RULES_GAME.player.damage,
+            criticalDamage: RULES_GAME.player.criticalDamage,
+            health: RULES_GAME.player.health,
+            maxHealth: RULES_GAME.player.health,
             keysMove: { DOWN: false, LEFT: false, RIGHT: false, UP: false },
             lastKeyMove: { horizontal: "", vertical: "" },
-            mapKeys: [{ index: 0, key: "w" }, { index: 1, key: "s" }, { index: 2, key: "d" }, { index: 3, key: "a" }],
             level: 1,
-            maxHealth: 100,
             points: 0,
-            position: { x: Math.random() * (RULES_GAME.map.dimension.width - RULES_GAME.player.dimension.width) + 1, y: Math.random() * (RULES_GAME.map.dimension.height - RULES_GAME.player.dimension.height) + 1 },
-            powerUps: { damage: 0, defense: 0, health: 0, size: 0, speed: 0 },
             speed: { x: 0, y: 0 },
-            speedMaster: 5,
-            upgradesPU: 0,
+            speedMaster: RULES_GAME.player.speedMaster,
+            upgradesPU: 1,
+            contAlreadyUpdatePU: 0,
             xp: 0,
-            xpUpLevel: 0
+            xpUpLevel: RULES_GAME.player.xpUpLevel(1),
+            position: { x: Math.random() * (RULES_GAME.map.dimension.width - RULES_GAME.player.dimension.width - 1) + 1, y: Math.random() * (RULES_GAME.map.dimension.height - RULES_GAME.player.dimension.height) + 1 },
+            powerUps: {
+                damage: 0,
+                criticalDamage: 0,
+                defense: 0,
+                health: 0,
+                size: 0,
+                speed: 0,
+                projectileSpeed: 0,
+                projectileSize: 0,
+                projectileRange: 0,
+                projectileReload: 0,
+            },
+            projectile: {
+                range: RULES_GAME.player.projectile.range,
+                reload: RULES_GAME.player.projectile.reload,
+                size: RULES_GAME.player.projectile.size,
+                speed: RULES_GAME.player.projectile.speed,
+            },
+            mapKeys: [
+                { index: 0, key: "w" },
+                { index: 1, key: "s" },
+                { index: 2, key: "d" },
+                { index: 3, key: "a" },
+            ],
         }
 
         return { player, valueOf: addPlayer({ player, idServer }) }
@@ -65,8 +114,6 @@ export default function PlayerControl() {
         const { player } = dataGame.getPlayer({ idSocket, idServer })
 
         if (!player) { return }
-
-
 
         const index = (function () {
             let index = -1
@@ -88,86 +135,6 @@ export default function PlayerControl() {
         mapKeys[index]({ player, data })
     }
 
-    // Functions Map Keys
-    const moveUp = ({ player, data }: { player: IPlayer, data: { action: "keyUp" | "keyDown" } }) => {
-        const move = () => {
-            player.keysMove.UP = true
-            player.lastKeyMove.vertical = "UP"
-
-            if (dataGame.updatePlayer({ player })) {
-                ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
-            }
-        }
-
-        const stop = () => {
-            player.keysMove.UP = false
-        }
-
-        if (data.action == "keyDown") move()
-        else if (data.action == "keyUp") stop()
-    }
-
-    const moveDown = ({ player, data }: { player: IPlayer, data: { action: "keyUp" | "keyDown" } }) => {
-        const move = () => {
-            player.keysMove.DOWN = true
-            player.lastKeyMove.vertical = "DOWN"
-
-            if (dataGame.updatePlayer({ player })) {
-                ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
-            }
-        }
-
-        const stop = () => {
-            player.keysMove.DOWN = false
-        }
-
-        if (data.action == "keyDown") move()
-        else if (data.action == "keyUp") stop()
-    }
-
-    const moveRight = ({ player, data }: { player: IPlayer, data: { action: "keyUp" | "keyDown" } }) => {
-        const move = () => {
-            player.keysMove.RIGHT = true
-            player.lastKeyMove.horizontal = "RIGHT"
-
-            if (dataGame.updatePlayer({ player })) {
-                ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
-            }
-        }
-
-        const stop = () => {
-            player.keysMove.RIGHT = false
-        }
-
-        if (data.action == "keyDown") move()
-        else if (data.action == "keyUp") stop()
-    }
-
-    const moveLeft = ({ player, data }: { player: IPlayer, data: { action: "keyUp" | "keyDown" } }) => {
-        const move = () => {
-            player.keysMove.LEFT = true
-            player.lastKeyMove.horizontal = "LEFT"
-
-            if (dataGame.updatePlayer({ player })) {
-                ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
-            }
-        }
-
-        const stop = () => {
-            player.keysMove.LEFT = false
-        }
-
-        if (data.action == "keyDown") move()
-        else if (data.action == "keyUp") stop()
-    }
-
-    const mapKeys = [
-        moveUp,
-        moveDown,
-        moveRight,
-        moveLeft,
-    ]
-
     // Update
     const updatePositionPlayer = ({ player }: { player: IPlayer }) => {
         player.speed.x = 0
@@ -187,17 +154,217 @@ export default function PlayerControl() {
         player.position.x += player.speed.x
         player.position.y += player.speed.y
 
+        if (player.position.x < 0) {
+            player.position.x = 0
+        } else if (player.position.x + player.dimension.width > RULES_GAME.map.dimension.width) {
+            player.position.x = RULES_GAME.map.dimension.width - player.dimension.width
+        }
+        if (player.position.y < 0) {
+            player.position.y = 0
+        } else if (player.position.y + player.dimension.height > RULES_GAME.map.dimension.height) {
+            player.position.y = RULES_GAME.map.dimension.height - player.dimension.height
+        }
+
         if (player.speed.x != 0 || player.speed.y != 0) {
             ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
         }
 
         dataGame.updatePlayer({ player })
+
+        return player.speed.x != 0 || player.speed.y != 0
     }
+
+    const playerSetXp = ({ player, value }: { player: IPlayer, value: number }) => {
+        player.xp += value
+        player.points += value
+
+        while (player.xp >= player.xpUpLevel) {
+            player.xp -= player.xpUpLevel
+            player.level++
+            player.upgradesPU++
+            player.xpUpLevel = RULES_GAME.player.xpUpLevel(player.level)
+
+            notifyCurrentPlayer(["level-up"], player.idSocket, { player })
+        }
+
+        ioEmit({ ev: "$/games/players/update", data: { player }, room: player.idServer })
+
+        dataGame.updatePlayer({ player })
+    }
+
+    const playerUpgradePu = ({ idSocket, idServer, powerUp }: { idSocket: String, idServer: IId, powerUp: "damage" | "health" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" }) => {
+        const { player } = dataGame.getPlayer({ idSocket, idServer })
+
+        if (!player) { return }
+
+        const validUpdate = validUpgrade({ player, powerUp })
+
+        if (!validUpdate) { return }
+
+        player.powerUps[powerUp]++
+        player.contAlreadyUpdatePU++
+
+        const response = upgradesFunctions[powerUp]({ player })
+
+        if (response.player) {
+            notifyCurrentPlayer(["upgrade"], player.idSocket, { player: response.player })
+        }
+    }
+
+    // --Functions Map Keys
+
+    // Upgrade PU
+    const upgradesFunctions = {
+        damage: ({ player }: { player: IPlayer }) => {
+            player.contAlreadyUpdatePU++
+            player.damage += RULES_GAME.powerUp.values["damage"]
+
+            const response = dataGame.updatePlayer({ player })
+
+            return { valueOf: response, player }
+        },
+        criticalDamage: ({ player }: { player: IPlayer }) => {
+            player.contAlreadyUpdatePU++
+            player.criticalDamage += RULES_GAME.powerUp.values["criticalDamage"]
+
+            const response = dataGame.updatePlayer({ player })
+
+            return { valueOf: response, player }
+        },
+        health: ({ player }: { player: IPlayer }) => {
+            player.contAlreadyUpdatePU++
+            player.health += RULES_GAME.powerUp.values["health"]
+
+            const response = dataGame.updatePlayer({ player })
+
+            return { valueOf: response, player }
+        },
+        defense: ({ player }: { player: IPlayer }) => {
+            player.contAlreadyUpdatePU++
+            player.defense += RULES_GAME.powerUp.values["defense"]
+
+            const response = dataGame.updatePlayer({ player })
+
+            return { valueOf: response, player }
+        },
+        size: ({ player }: { player: IPlayer }) => {
+            player.contAlreadyUpdatePU++
+            player.dimension.width += RULES_GAME.powerUp.values["size"]
+            player.dimension.height += RULES_GAME.powerUp.values["size"]
+
+            const response = dataGame.updatePlayer({ player })
+
+            return { valueOf: response, player }
+        },
+        speed: ({ player }: { player: IPlayer }) => {
+            player.contAlreadyUpdatePU++
+            player.speedMaster += RULES_GAME.powerUp.values["speed"]
+
+            const response = dataGame.updatePlayer({ player })
+
+            return { valueOf: response, player }
+        },
+        projectileSpeed: ({ player }: { player: IPlayer }) => {
+            player.contAlreadyUpdatePU++
+
+            const response = dataGame.updatePlayer({ player })
+
+            return { valueOf: response, player }
+        },
+        projectileSize: ({ player }: { player: IPlayer }) => {
+            player.contAlreadyUpdatePU++
+
+            const response = dataGame.updatePlayer({ player })
+
+            return { valueOf: response, player }
+        }
+    }
+
+    // Move
+    const movePlayersFunctions = {
+        moveUp: ({ player, data }: { player: IPlayer, data: { action: "keyUp" | "keyDown" } }) => {
+            const move = () => {
+                player.keysMove.UP = true
+                player.lastKeyMove.vertical = "UP"
+
+                if (dataGame.updatePlayer({ player })) {
+                    ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
+                }
+            }
+
+            const stop = () => {
+                player.keysMove.UP = false
+            }
+
+            if (data.action == "keyDown") move()
+            else if (data.action == "keyUp") stop()
+        },
+        moveDown: ({ player, data }: { player: IPlayer, data: { action: "keyUp" | "keyDown" } }) => {
+            const move = () => {
+                player.keysMove.DOWN = true
+                player.lastKeyMove.vertical = "DOWN"
+
+                if (dataGame.updatePlayer({ player })) {
+                    ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
+                }
+            }
+
+            const stop = () => {
+                player.keysMove.DOWN = false
+            }
+
+            if (data.action == "keyDown") move()
+            else if (data.action == "keyUp") stop()
+        },
+        moveRight: ({ player, data }: { player: IPlayer, data: { action: "keyUp" | "keyDown" } }) => {
+            const move = () => {
+                player.keysMove.RIGHT = true
+                player.lastKeyMove.horizontal = "RIGHT"
+
+                if (dataGame.updatePlayer({ player })) {
+                    ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
+                }
+            }
+
+            const stop = () => {
+                player.keysMove.RIGHT = false
+            }
+
+            if (data.action == "keyDown") move()
+            else if (data.action == "keyUp") stop()
+        },
+        moveLeft: ({ player, data }: { player: IPlayer, data: { action: "keyUp" | "keyDown" } }) => {
+            const move = () => {
+                player.keysMove.LEFT = true
+                player.lastKeyMove.horizontal = "LEFT"
+
+                if (dataGame.updatePlayer({ player })) {
+                    ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
+                }
+            }
+
+            const stop = () => {
+                player.keysMove.LEFT = false
+            }
+
+            if (data.action == "keyDown") move()
+            else if (data.action == "keyUp") stop()
+        }
+    }
+
+    const mapKeys = [
+        movePlayersFunctions.moveUp,
+        movePlayersFunctions.moveDown,
+        movePlayersFunctions.moveRight,
+        movePlayersFunctions.moveLeft,
+    ]
 
     return {
         createPlayer,
         quitPlayer,
         updatePositionPlayer,
-        movePlayer
+        playerUpgradePu,
+        movePlayer,
+        playerSetXp,
     }
 }

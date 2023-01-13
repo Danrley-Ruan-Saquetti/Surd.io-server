@@ -18,18 +18,29 @@ function RunningGame() {
     }
 
     const runningGame = ({ idServer }: { idServer: IId }) => {
-        let intervalGame: NodeJS.Timer
+        let intervalUpdate: NodeJS.Timer
+        let intervalFast: NodeJS.Timer
         let intervalXp: NodeJS.Timer
 
         const initComponents = () => {
             try {
-                intervalGame = setInterval(update, RULES_GAME.game.FPS)
-                intervalXp = setInterval(() => gameControl.createXp(idServer), RULES_GAME.xps.intervalNew)
+                intervalUpdate = setInterval(update, RULES_GAME.game.intervalUpdate)
+                intervalFast = setInterval(verifyAll, RULES_GAME.game.intervalFast)
+                intervalXp = setInterval(() => {
+                    for (let i = 0; i < RULES_GAME.xps.lengthForRespawn; i++) {
+                        gameControl.createXp(idServer)
+                    }
+                }, RULES_GAME.xps.intervalNew)
             } catch (err) {
                 console.log(err);
-                clearInterval(intervalGame)
+                clearInterval(intervalUpdate)
+                clearInterval(intervalFast)
                 clearInterval(intervalXp)
             }
+        }
+
+        const verifyAll = () => {
+            gameControl.verifyAll(idServer)
         }
 
         const update = () => {
