@@ -67,6 +67,7 @@ export const RULES_GAME = {
         speedMaster: 5,
     },
     ranking: {
+        intervalUpdateListRanking: 1000 * 1,
         listLength: 25
     },
     xps: {

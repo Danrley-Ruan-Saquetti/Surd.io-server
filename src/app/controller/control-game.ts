@@ -2,6 +2,7 @@ import { IId } from "../../database/index.js"
 import { RULES_GAME } from "../business-rule/rules.js"
 import dataGame from "../game/data/data-game.js"
 import { IPlayer } from "../game/model/player.js"
+import { ioEmit } from "../io/io.js"
 import { IUser } from "../model/model-user.js"
 import { validToken } from "../util/token.service.js"
 import PlayerControl from "./control-player.js"
@@ -123,6 +124,12 @@ export default function GameControl() {
         }
     }
 
+    const updateRanking = (idServer: IId) => {
+        const ranking = getRanking(idServer)
+
+        ioEmit({ ev: "$/games/ranking", data: { ranking }, room: idServer })
+    }
+
     // User
     const UserStartGame = ({ user, idServer = null }: { user: IUser, idServer?: IId }) => {
         const response = playerControl.createPlayer(user, idServer)
@@ -160,6 +167,7 @@ export default function GameControl() {
         getData,
         getRanking,
         update,
+        updateRanking,
         UserStartGame,
         UserQuitGame,
         movePlayer,
