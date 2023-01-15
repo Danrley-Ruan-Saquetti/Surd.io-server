@@ -7,21 +7,21 @@ import { IUser } from "../model/model-user"
 
 export default function PlayerControl() {
 
-    const notifyCurrentPlayer = async (actions: String[], idSocket: String, data: any) => {
+    const notifyCurrentPlayer = async (events: String[], idSocket: String, data: any) => {
         const response = await getSocket(idSocket)
 
         if (response.socket) {
             const { socket } = response
 
-            for (let i = 0; i < actions.length; i++) {
-                const action = actions[i]
+            for (let i = 0; i < events.length; i++) {
+                const action = events[i]
 
-                socket.emit(`$/games/players/current/${action}`, data)
+                socket.emit(action, data)
             }
         }
     }
 
-    const validUpgrade = ({ player, powerUp }: { player: IPlayer, powerUp: "damage" | "health" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" }) => {
+    const validUpgrade = ({ player, powerUp }: { player: IPlayer, powerUp: "damage" | "hp" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" }) => {
         if (player.upgradesPU <= 0) { return false }
 
         if (player.contAlreadyUpdatePU >= RULES_GAME.powerUp.maxUpgrades) { return false }
@@ -64,13 +64,14 @@ export default function PlayerControl() {
             dimension: { height: RULES_GAME.player.dimension.height, width: RULES_GAME.player.dimension.width },
             damage: RULES_GAME.player.damage,
             criticalDamage: RULES_GAME.player.criticalDamage,
-            health: RULES_GAME.player.health,
-            maxHealth: RULES_GAME.player.health,
+            hp: RULES_GAME.player.hp,
+            hpMax: RULES_GAME.player.hp,
             keysMove: { DOWN: false, LEFT: false, RIGHT: false, UP: false },
             lastKeyMove: { horizontal: "", vertical: "" },
             level: 1,
             points: 0,
             speed: { x: 0, y: 0 },
+            fov: RULES_GAME.player.fov(RULES_GAME.player.dimension),
             speedMaster: RULES_GAME.player.speedMaster,
             upgradesPU: 1,
             contAlreadyUpdatePU: 0,
@@ -81,7 +82,7 @@ export default function PlayerControl() {
                 damage: 0,
                 criticalDamage: 0,
                 defense: 0,
-                health: 0,
+                hp: 0,
                 size: 0,
                 speed: 0,
                 projectileSpeed: 0,
@@ -137,6 +138,8 @@ export default function PlayerControl() {
 
     // Update
     const updatePositionPlayer = ({ player }: { player: IPlayer }) => {
+        if (!player.keysMove.DOWN && !player.keysMove.LEFT && !player.keysMove.RIGHT && !player.keysMove.UP) { return false }
+
         player.speed.x = 0
         player.speed.y = 0
 
@@ -178,13 +181,15 @@ export default function PlayerControl() {
         player.xp += value
         player.points += value
 
+        notifyCurrentPlayer(["$/games/players/current/earn-xp"], player.idSocket, { player })
+
         while (player.xp >= player.xpUpLevel) {
             player.xp -= player.xpUpLevel
             player.level++
             player.upgradesPU++
             player.xpUpLevel = RULES_GAME.player.xpUpLevel(player.level)
 
-            notifyCurrentPlayer(["level-up"], player.idSocket, { player })
+            notifyCurrentPlayer(["$/games/players/current/level-up"], player.idSocket, { player })
         }
 
         ioEmit({ ev: "$/games/players/update", data: { player }, room: player.idServer })
@@ -192,7 +197,7 @@ export default function PlayerControl() {
         dataGame.updatePlayer({ player })
     }
 
-    const playerUpgradePu = ({ idSocket, idServer, powerUp }: { idSocket: String, idServer: IId, powerUp: "damage" | "health" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" }) => {
+    const playerUpgradePu = ({ idSocket, idServer, powerUp }: { idSocket: String, idServer: IId, powerUp: "damage" | "hp" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" }) => {
         const { player } = dataGame.getPlayer({ idSocket, idServer })
 
         if (!player) { return }
@@ -203,11 +208,12 @@ export default function PlayerControl() {
 
         player.powerUps[powerUp]++
         player.contAlreadyUpdatePU++
+        player.upgradesPU--
 
         const response = upgradesFunctions[powerUp]({ player })
 
         if (response.player) {
-            notifyCurrentPlayer(["upgrade"], player.idSocket, { player: response.player })
+            notifyCurrentPlayer(["$/games/players/current/upgrade"], player.idSocket, { player: response.player })
         }
     }
 
@@ -231,9 +237,9 @@ export default function PlayerControl() {
 
             return { valueOf: response, player }
         },
-        health: ({ player }: { player: IPlayer }) => {
+        hp: ({ player }: { player: IPlayer }) => {
             player.contAlreadyUpdatePU++
-            player.health += RULES_GAME.powerUp.values["health"]
+            player.hpMax += RULES_GAME.powerUp.values["hp"]
 
             const response = dataGame.updatePlayer({ player })
 
@@ -251,6 +257,9 @@ export default function PlayerControl() {
             player.contAlreadyUpdatePU++
             player.dimension.width += RULES_GAME.powerUp.values["size"]
             player.dimension.height += RULES_GAME.powerUp.values["size"]
+            player.fov = RULES_GAME.player.fov(player.dimension)
+            player.position.x -= (RULES_GAME.powerUp.values["size"] / 2)
+            player.position.y -= (RULES_GAME.powerUp.values["size"] / 2)
 
             const response = dataGame.updatePlayer({ player })
 

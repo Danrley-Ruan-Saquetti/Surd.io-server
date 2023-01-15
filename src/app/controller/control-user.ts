@@ -21,6 +21,35 @@ export default function UserControl() {
     const postControl = PostControl()
     const gameControl = GameControl()
 
+    const validRegister = ({ username, email, password }: { username: String, email: String, password: String }) => {
+        const error = []
+
+        if (!username) {
+            error.push({ msg: "Inform the username", username: true })
+        } else {
+            for (let i = 0; i < username.length; i++) {
+                const letter = username.charAt(i)
+
+                if (!RULES_USER.incorrectCharacters.includes(letter)) { continue }
+
+                error.push({ msg: "Username incorrect", username: true })
+                break
+            }
+        }
+        if (!email) {
+            error.push({ msg: "Inform the e-mail", email: true })
+        } else {
+            if (email.split(" ").length > 1) {
+                error.push({ msg: "E-mail incorrect", email: true })
+            }
+        }
+        if (!password) {
+            error.push({ msg: "Inform the password", password: true })
+        }
+
+        return { error, valueOf: error.length == 0 }
+    }
+
     const verifyValuesAlreadyExists = async ({ username, email, _id = "" }: { username: String, email: String, _id?: String }) => {
         const error: { username?: { msg: String, username: Boolean }, email?: { msg: String, email: Boolean } } = {}
 
@@ -215,7 +244,7 @@ export default function UserControl() {
 
         if (responseSocket.user) { return { error: { msg: "Host already connected", system: true }, status: 401 } }
 
-        const valuesVerified = RULES_USER.VALID_REGISTER({ username, email, password })
+        const valuesVerified = validRegister({ username, email, password })
 
         if (!valuesVerified.valueOf) { return { error: valuesVerified.error, status: 400 } }
 

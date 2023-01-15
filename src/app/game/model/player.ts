@@ -8,9 +8,10 @@ export interface IPlayer {
     level: number
     damage: number
     criticalDamage: number
-    health: number
-    maxHealth: number
+    hp: number
+    hpMax: number
     xp: number
+    fov: number
     xpUpLevel: number
     defense: number
     coins: number
@@ -33,7 +34,7 @@ export interface IPlayer {
     powerUps: {
         damage: number
         criticalDamage: number
-        health: number
+        hp: number
         defense: number
         size: number
         speed: number

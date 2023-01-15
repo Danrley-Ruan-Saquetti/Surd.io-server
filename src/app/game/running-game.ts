@@ -26,11 +26,7 @@ function RunningGame() {
             try {
                 intervalUpdate = setInterval(update, RULES_GAME.game.intervalUpdate)
                 intervalFast = setInterval(verifyAll, RULES_GAME.game.intervalFast)
-                intervalXp = setInterval(() => {
-                    for (let i = 0; i < RULES_GAME.xps.lengthForRespawn; i++) {
-                        gameControl.createXp(idServer)
-                    }
-                }, RULES_GAME.xps.intervalNew)
+                intervalXp = setInterval(createXpSerial, RULES_GAME.xps.intervalNew)
             } catch (err) {
                 console.log(err);
                 clearInterval(intervalUpdate)
@@ -45,6 +41,10 @@ function RunningGame() {
 
         const update = () => {
             gameControl.update(idServer)
+        }
+
+        const createXpSerial = () => {
+            gameControl.createXpSerial(idServer)
         }
 
         initComponents()

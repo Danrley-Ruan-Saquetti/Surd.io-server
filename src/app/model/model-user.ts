@@ -14,7 +14,7 @@ export interface IUser extends mongoose.Document {
     coins: Number
     recordPoints: Number
     damage: Number
-    health: Number
+    hp: Number
     defense: Number
     speed: Number
     size: Number
@@ -81,7 +81,7 @@ const UserSchema = new mongoose.Schema<IUser>({
         type: Number,
         require: true
     },
-    health: {
+    hp: {
         type: Number,
         require: true
     },

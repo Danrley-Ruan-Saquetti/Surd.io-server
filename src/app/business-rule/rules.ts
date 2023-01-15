@@ -1,33 +1,24 @@
+const DIMENSIONS = {
+    map: 10000,
+    players: 40
+}
+
+const DIMENSION_QUADRANT = DIMENSIONS.players * 4
+
+const XP_LENGTH_FOR_RESPAWN = Math.round(DIMENSIONS.map / DIMENSION_QUADRANT)
+
+const XP_INTERVAL_NEW = 1000 / .2 // 5 seconds
+
+const XP_MAX_LENGTH = XP_LENGTH_FOR_RESPAWN * 6
+
+const LENGTH_PU = 9
+
+const LENGTH_UPGRADES_PU = 6
+
+const INCORRECT_CHARACTERS = " !@#$%&*|\\/?+=§`´{}[]()ºª°<>,:;'\"¹²³£¢"
+
 export const RULES_USER = {
-    VALID_REGISTER: ({ username, email, password }: { username: String, email: String, password: String }) => {
-        const error = []
-
-        const INCORRECT_CHARACTERS = " !@#$%&*|\\/?+=§`´{}[]()ºª°<>,:;'\"¹²³£¢"
-
-        if (!username) {
-            error.push({ msg: "Inform the username", username: true })
-        } else {
-            for (let i = 0; i < username.length; i++) {
-                const letter = username.charAt(i)
-
-                if (INCORRECT_CHARACTERS.includes(letter)) {
-                    error.push({ msg: "Username incorrect", username: true })
-                }
-            }
-        }
-        if (!email) {
-            error.push({ msg: "Inform the e-mail", email: true })
-        } else {
-            if (email.split(" ").length > 1) {
-                error.push({ msg: "E-mail incorrect", email: true })
-            }
-        }
-        if (!password) {
-            error.push({ msg: "Inform the password", password: true })
-        }
-
-        return { error, valueOf: error.length == 0 }
-    }
+    incorrectCharacters: INCORRECT_CHARACTERS
 }
 
 export const RULES_SERVER = {
@@ -38,21 +29,6 @@ export const RULES_POST = {
     LIMIT_LIST: 20
 }
 
-const DIMENSIONS = {
-    map: 700,
-    players: 40
-}
-
-const XP_LENGTH_FOR_RESPAWN = Math.round(DIMENSIONS.map / (DIMENSIONS.players * 5))
-
-const XP_INTERVAL_NEW = 1000 / .2 // 5 seconds
-
-const LENGTH_PU = 9
-
-const LENGTH_UPGRADES_PU = 6
-
-const VALUE_PU = 3
-
 export const RULES_GAME = {
     game: {
         intervalUpdate: 1000 / 90,
@@ -62,9 +38,15 @@ export const RULES_GAME = {
         dimension: {
             width: DIMENSIONS.map,
             height: DIMENSIONS.map
+        },
+        quadrant: {
+            dimension: DIMENSION_QUADRANT
         }
     },
     player: {
+        fov: (sizePlayer: { width: number, height: number }) => {
+            return Math.round((sizePlayer.height * sizePlayer.width) * .95)
+        },
         dimension: {
             width: DIMENSIONS.players,
             height: DIMENSIONS.players
@@ -80,13 +62,17 @@ export const RULES_GAME = {
         },
         damage: 10,
         criticalDamage: 10,
-        health: 100,
+        hp: 100,
         defense: 100,
         speedMaster: 5,
+    },
+    ranking: {
+        listLength: 25
     },
     xps: {
         lengthForRespawn: XP_LENGTH_FOR_RESPAWN,
         intervalNew: XP_INTERVAL_NEW,
+        maxLength: XP_MAX_LENGTH,
         types: [
             { dimension: { width: 10, height: 10 }, value: 2, color: "", tx: 65 },
             { dimension: { width: 15, height: 15 }, value: 5, color: "", tx: 85 },
@@ -101,12 +87,29 @@ export const RULES_GAME = {
             damage: 3,
             criticalDamage: 3,
             defense: 3,
-            health: (Math.round((100 * 2) / LENGTH_UPGRADES_PU)),
-            size: VALUE_PU,
-            speed: VALUE_PU,
-            projectileSpeed: VALUE_PU,
-            projectileSize: VALUE_PU,
-            projectileDamage: VALUE_PU,
+            hp: Math.round((100 * 2) / LENGTH_UPGRADES_PU),
+            size: 3,
+            speed: 1,
+            projectileSpeed: 1,
+            projectileSize: 1,
+            projectileDamage: 5,
         }
     }
 }
+
+console.log("\nRULES_USER")
+console.log(RULES_USER);
+console.log("\nRULES_SERVER")
+console.log(RULES_SERVER);
+console.log("\nRULES_POST")
+console.log(RULES_POST);
+console.log("\nRULES_GAME game")
+console.log(RULES_GAME.game);
+console.log("\nRULES_GAME map")
+console.log(RULES_GAME.map);
+console.log("\nRULES_GAME player")
+console.log(RULES_GAME.player);
+console.log("\nRULES_GAME powerUp")
+console.log(RULES_GAME.powerUp);
+console.log("\nRULES_GAME xps")
+console.log(RULES_GAME.xps);

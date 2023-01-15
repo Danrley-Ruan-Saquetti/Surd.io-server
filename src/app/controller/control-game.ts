@@ -1,6 +1,7 @@
 import { IId } from "../../database/index.js"
 import { RULES_GAME } from "../business-rule/rules.js"
 import dataGame from "../game/data/data-game.js"
+import { IPlayer } from "../game/model/player.js"
 import { IUser } from "../model/model-user.js"
 import { validToken } from "../util/token.service.js"
 import PlayerControl from "./control-player.js"
@@ -38,7 +39,52 @@ export default function GameControl() {
 
         const { player } = dataGame.getPlayer({ idServer: user.serverConnected || null, idSocket })
 
-        return { data: { ...dataGame.getDataByServer({ _id: user.serverConnected || null }), powerUp: { lengthUpgradesPU: RULES_GAME.powerUp.lengthUpgradesPU } }, mapKeys: player?.mapKeys }
+        return { data: { ...dataGame.getDataByServer({ _id: user.serverConnected || null }), powerUp: { lengthUpgradesPU: RULES_GAME.powerUp.lengthUpgradesPU } }, mapKeys: player?.mapKeys, ranking: user.serverConnected ? getRanking(user.serverConnected) : null }
+    }
+
+    const getRanking = (idServer: IId) => {
+        const { players } = dataGame.getDataByServer({ _id: idServer })
+
+        const ranking: IPlayer[] = []
+
+        const validIdSocket = (idSocket: String) => {
+            for (let i = 0; i < ranking.length; i++) {
+                if (ranking[i].idSocket == idSocket) { return false }
+            }
+            return true
+        }
+
+        const chooseBest = (indexInitial: number, player: IPlayer) => {
+            if (!validIdSocket(player.idSocket)) { return null }
+
+            let best: IPlayer = player
+
+            for (let i = indexInitial; i < players.length; i++) {
+                const player = players[i]
+
+                if (!validIdSocket(player.idSocket)) { continue }
+
+                if (best.points > player.points) { continue }
+
+                best = player
+            }
+
+            ranking.push(best)
+
+            return best
+        }
+
+        for (let i = 0; i < players.length && i < RULES_GAME.ranking.listLength; i++) {
+            const player = players[i]
+
+            let best: IPlayer | null
+
+            do {
+                best = chooseBest(i + 1, player)
+            } while (best && best.idSocket != player.idSocket);
+        }
+
+        return ranking
     }
 
     // Update
@@ -95,23 +141,30 @@ export default function GameControl() {
         playerControl.movePlayer(data)
     }
 
-    const upgradePU = (data: { idSocket: String, idServer: IId, powerUp: "damage" | "health" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" }) => {
+    const upgradePU = (data: { idSocket: String, idServer: IId, powerUp: "damage" | "hp" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" }) => {
         playerControl.playerUpgradePu(data)
     }
 
     // Xp
+    const createXpSerial = (idServer: IId) => {
+        for (let i = 0; i < RULES_GAME.xps.lengthForRespawn && dataGame.getDataByServer({ _id: idServer }).xps.length < RULES_GAME.xps.maxLength; i++) {
+            createXp(idServer)
+        }
+    }
+
     const createXp = (idServer: IId) => {
         return xpControl.createXp(idServer)
     }
 
     return {
         getData,
+        getRanking,
         update,
         UserStartGame,
         UserQuitGame,
         movePlayer,
         upgradePU,
-        createXp,
+        createXpSerial,
         verifyAll,
     }
 }
