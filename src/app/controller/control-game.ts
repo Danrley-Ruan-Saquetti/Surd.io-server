@@ -6,11 +6,13 @@ import { ioEmit } from "../io/io.js"
 import { IUser } from "../model/model-user.js"
 import { validToken } from "../util/token.service.js"
 import PlayerControl from "./control-player.js"
+import PotionControl from "./control-potion.js"
 import XpControl from "./control-xp.js"
 
 export default function GameControl() {
     const playerControl = PlayerControl()
     const xpControl = XpControl()
+    const potionControl = PotionControl()
 
     const verifyCollision = ({ position: { x: x1, y: y1 }, dimension: { width: w1, height: h1 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }, { position: { x: x2, y: y2 }, dimension: { width: w2, height: h2 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }) => {
         return ((x1 >= x2 && x1 <= x2 + w2 && y1 >= y2 && y1 <= y2 + h2) ||
@@ -94,7 +96,8 @@ export default function GameControl() {
     }
 
     const verifyAll = (idServer: IId) => {
-        verifyCollisionPlayerXp({ idServer })
+        setTimeout(() => verifyCollisionPlayerXp({ idServer }), 1)
+        setTimeout(() => verifyCollisionPlayerPotion({ idServer }), 1)
     }
 
     const movePlayers = ({ idServer }: { idServer: IId }) => {
@@ -119,6 +122,23 @@ export default function GameControl() {
                 if (verifyCollision(xp, player)) {
                     playerControl.playerSetXp({ player, value: xp.value })
                     xpControl.removeXp({ _id: xp._id, idServer })
+                }
+            }
+        }
+    }
+
+    const verifyCollisionPlayerPotion = ({ idServer }: { idServer: IId }) => {
+        const { players, potions } = dataGame.getDataByServer({ _id: idServer })
+
+        for (let i = 0; i < players.length; i++) {
+            const player = players[i]
+
+            for (let i = 0; i < potions.length; i++) {
+                const potion = potions[i]
+
+                if (verifyCollision(potion, player)) {
+                    playerControl.playerSetHp({ player, value: potion.value })
+                    potionControl.removePotion({ _id: potion._id, idServer })
                 }
             }
         }
@@ -163,6 +183,17 @@ export default function GameControl() {
         return xpControl.createXp(idServer)
     }
 
+    // Potion
+    const createPotionSerial = (idServer: IId) => {
+        for (let i = 0; i < RULES_GAME.potions.lengthForRespawn && dataGame.getDataByServer({ _id: idServer }).potions.length < RULES_GAME.potions.maxLength; i++) {
+            createPotion(idServer)
+        }
+    }
+
+    const createPotion = (idServer: IId) => {
+        return potionControl.createPotion(idServer)
+    }
+
     return {
         getData,
         getRanking,
@@ -174,5 +205,6 @@ export default function GameControl() {
         upgradePU,
         createXpSerial,
         verifyAll,
+        createPotionSerial,
     }
 }

@@ -197,6 +197,21 @@ export default function PlayerControl() {
         dataGame.updatePlayer({ player })
     }
 
+    const playerSetHp = ({ player, value }: { player: IPlayer, value: number }) => {
+        player.hp = (function () {
+            if (player.hp + value > player.hpMax) {
+                return player.hpMax
+            }
+            return player.hp + value
+        }())
+
+        notifyCurrentPlayer(["$/games/players/current/earn-potion"], player.idSocket, { player })
+
+        ioEmit({ ev: "$/games/players/update", data: { player }, room: player.idServer })
+
+        dataGame.updatePlayer({ player })
+    }
+
     const playerUpgradePu = ({ idSocket, idServer, powerUp }: { idSocket: String, idServer: IId, powerUp: "damage" | "hp" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" }) => {
         const { player } = dataGame.getPlayer({ idSocket, idServer })
 
@@ -375,5 +390,6 @@ export default function PlayerControl() {
         playerUpgradePu,
         movePlayer,
         playerSetXp,
+        playerSetHp,
     }
 }

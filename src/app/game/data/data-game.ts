@@ -1,6 +1,7 @@
 import { IId } from "../../../database/index.js";
 import { IGame, IServer } from "../model/game.js";
 import { IPlayer } from "../model/player.js";
+import { IPotion } from "../model/potion.js";
 import { IXp } from "../model/xp.js";
 
 function DataGame() {
@@ -121,6 +122,49 @@ function DataGame() {
         }
     }
 
+    // Potion
+    const getPotion = ({ _id, idServer }: { _id: String, idServer: IId }) => {
+        const response: { potion: IPotion | null, index: number } = (function () {
+            for (let i = 0; i < games.servers[indexes[`${idServer}`]].potions.length; i++) {
+                const potion = games.servers[indexes[`${idServer}`]].potions[i];
+
+                if (potion._id != _id) { continue }
+
+                return { potion, index: i }
+            }
+
+            return { potion: null, index: -1 }
+        }())
+
+        return response
+    }
+
+    const addPotion = ({ potion, idServer }: { potion: IPotion, idServer: IId }) => {
+        try {
+            games.servers[indexes[`${idServer}`]].potions.push(potion)
+
+            return true
+        } catch (err) {
+            console.log(err);
+            return false
+        }
+    }
+
+    const removePotion = ({ _id, idServer }: { _id: String, idServer: IId }) => {
+        try {
+            const { index } = getPotion({ idServer, _id })
+
+            if (index == -1) { return false }
+
+            games.servers[indexes[`${idServer}`]].potions.splice(index, 1)
+
+            return true
+        } catch (err) {
+            console.log(err);
+            return false
+        }
+    }
+
     return {
         getData,
         getDataByServer,
@@ -132,6 +176,9 @@ function DataGame() {
         getXp,
         addXp,
         removeXp,
+        getPotion,
+        addPotion,
+        removePotion,
     }
 }
 

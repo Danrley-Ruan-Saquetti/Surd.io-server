@@ -3,7 +3,7 @@ import ChatDao from "../model/dao-chat.js"
 import UserDao from "../model/dao-user.js"
 import PostDao from "../model/dao-post.js"
 import dataGame from "../game/data/data-game.js"
-import { RULES_GAME } from "../business-rule/rules.js"
+import { RULES_GAME, RULES_SERVER } from "../business-rule/rules.js"
 
 const serverDao = ServerDao()
 const chatDao = ChatDao()
@@ -11,10 +11,8 @@ const userDao = UserDao()
 const postDao = PostDao()
 
 export default async function DataStart() {
-    const servers = [{ name: "Server A", isLobby: false }, { name: "Server B", isLobby: false }, { name: "Server C", isLobby: false }, { name: "Server D", isLobby: false }, { name: "Server E", isLobby: false }, { name: "Lobby", isLobby: true }]
-
     const serverData = () => {
-        servers.forEach(async (s) => {
+        RULES_SERVER.servers.forEach(async (s) => {
             const responseServer = await serverDao.findByName(s)
 
             if (responseServer.server) {
@@ -65,7 +63,7 @@ export default async function DataStart() {
 
         responseServers.servers && (function () {
             responseServers.servers.forEach(server => {
-                dataGame.addGame({ _id: server._id, players: [], xps: [], map: {dimension: RULES_GAME.map.dimension} })
+                dataGame.addGame({ _id: server._id, players: [], xps: [], map: { dimension: RULES_GAME.map.dimension }, potions: [] })
             })
         }())
     }

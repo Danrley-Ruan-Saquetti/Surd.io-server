@@ -155,7 +155,7 @@ export default function UserControl() {
 
         ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
 
-        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} connect room {${server._id}}`);
+        console.log(`[IO] User => {${user._id}} Host => {${idSocket}} connect ${!server.isLobby ? "game" : "room"} {${server._id}}`);
 
         return { success: { msg: "User connected server successfully", system: true }, status: 200, user }
     }

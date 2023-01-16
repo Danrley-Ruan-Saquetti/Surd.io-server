@@ -3,13 +3,21 @@ const DIMENSIONS = {
     players: 40
 }
 
+const ONE_SECOND = 1000 // 1 second
+
 const DIMENSION_QUADRANT = DIMENSIONS.players * 4
 
 const XP_LENGTH_FOR_RESPAWN = Math.round(DIMENSIONS.map / DIMENSION_QUADRANT)
 
-const XP_INTERVAL_NEW = 1000 / .2 // 5 seconds
+const XP_INTERVAL_NEW = ONE_SECOND / .2 // 5 seconds
 
 const XP_MAX_LENGTH = XP_LENGTH_FOR_RESPAWN * 6
+
+const POTION_LENGTH_FOR_RESPAWN = Math.round(DIMENSIONS.map / (DIMENSION_QUADRANT * 5))
+
+const POTION_INTERVAL_NEW = ONE_SECOND / .1 // 10 seconds
+
+const POTION_MAX_LENGTH = POTION_LENGTH_FOR_RESPAWN * 6
 
 const LENGTH_PU = 9
 
@@ -22,6 +30,14 @@ export const RULES_USER = {
 }
 
 export const RULES_SERVER = {
+    servers: [
+        { name: "Server A", isLobby: false },
+        { name: "Server B", isLobby: false },
+        { name: "Server C", isLobby: false },
+        { name: "Server D", isLobby: false },
+        { name: "Server E", isLobby: false },
+        { name: "Lobby", isLobby: true }
+    ],
     LIMIT_PLAYERS: 250
 }
 
@@ -31,8 +47,8 @@ export const RULES_POST = {
 
 export const RULES_GAME = {
     game: {
-        intervalUpdate: 1000 / 90,
-        intervalFast: 1000 / 150,
+        intervalUpdate: ONE_SECOND / 90,
+        intervalFast: ONE_SECOND / 150,
     },
     map: {
         dimension: {
@@ -56,7 +72,7 @@ export const RULES_GAME = {
         },
         projectile: {
             range: 100,
-            reload: 1000 * 5, // 5 seconds
+            reload: ONE_SECOND * 5, // 5 seconds
             size: 5,
             speed: 3,
         },
@@ -67,7 +83,7 @@ export const RULES_GAME = {
         speedMaster: 5,
     },
     ranking: {
-        intervalUpdateListRanking: 1000 * 1,
+        intervalUpdateListRanking: ONE_SECOND * 1,
         listLength: 25
     },
     xps: {
@@ -79,6 +95,18 @@ export const RULES_GAME = {
             { dimension: { width: 15, height: 15 }, value: 5, color: "", tx: 85 },
             { dimension: { width: 20, height: 20 }, value: 10, color: "", tx: 97 },
             { dimension: { width: 25, height: 25 }, value: 20, color: "", tx: 100 },
+        ]
+    },
+    potions: {
+        lengthForRespawn: POTION_LENGTH_FOR_RESPAWN,
+        intervalNew: POTION_INTERVAL_NEW,
+        maxLength: POTION_MAX_LENGTH,
+        types: [
+            { dimension: { width: 10, height: 10 }, value: 10, color: "", tx: 45 },
+            { dimension: { width: 15, height: 15 }, value: 25, color: "", tx: 72 },
+            { dimension: { width: 20, height: 20 }, value: 50, color: "", tx: 87 },
+            { dimension: { width: 25, height: 25 }, value: 100, color: "", tx: 97 },
+            { dimension: { width: 35, height: 35 }, value: 250, color: "", tx: 100 },
         ]
     },
     powerUp: {
@@ -114,3 +142,5 @@ console.log("\nRULES_GAME powerUp")
 console.log(RULES_GAME.powerUp);
 console.log("\nRULES_GAME xps")
 console.log(RULES_GAME.xps);
+console.log("\nRULES_GAME potions")
+console.log(RULES_GAME.potions);
