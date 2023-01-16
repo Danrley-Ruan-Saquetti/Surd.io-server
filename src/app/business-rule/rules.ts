@@ -3,6 +3,8 @@ const DIMENSIONS = {
     players: 40
 }
 
+const SPEED_PLAYER_MASTER = 5
+
 const ONE_SECOND = 1000 // 1 second
 
 const DIMENSION_QUADRANT = DIMENSIONS.players * 4
@@ -80,7 +82,7 @@ export const RULES_GAME = {
         criticalDamage: 10,
         hp: 100,
         defense: 100,
-        speedMaster: 5,
+        speedMaster: SPEED_PLAYER_MASTER,
     },
     ranking: {
         intervalUpdateListRanking: ONE_SECOND * 1,
@@ -118,7 +120,7 @@ export const RULES_GAME = {
             defense: 3,
             hp: Math.round((100 * 2) / LENGTH_UPGRADES_PU),
             size: 3,
-            speed: 1,
+            speed: Math.floor((SPEED_PLAYER_MASTER * 2) / LENGTH_UPGRADES_PU),
             projectileSpeed: 1,
             projectileSize: 1,
             projectileDamage: 5,
