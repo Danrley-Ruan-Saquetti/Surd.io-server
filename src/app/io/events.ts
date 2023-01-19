@@ -715,6 +715,17 @@ io.on("connection", async (socket) => {
         }
     })
 
+    socket.on("games/players/shoot-projectile", async (req) => {
+        try {
+            const { data, idServer } = req
+
+            gameControl.shootProjectile({idSocket, idServer, data})
+        } catch (err) {
+            console.log(err);
+            socketEmit({ ev: "games/players/move/res", data: { error: { msg: "Cannot move player", system: true } } })
+        }
+    })
+
     socket.on("games/players/power-ups/upgrade", async (req) => {
         try {
             const { data, idServer } = req

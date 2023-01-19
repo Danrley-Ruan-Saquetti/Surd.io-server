@@ -3,6 +3,10 @@ const DIMENSIONS = {
     players: 40
 }
 
+const PROJECTILE_SIZE = 10
+
+const PROJECTILE_SPEED = 7
+
 const SPEED_PLAYER_MASTER = 5
 
 const ONE_SECOND = 1000 // 1 second
@@ -84,6 +88,18 @@ export const RULES_GAME = {
         defense: 100,
         speedMaster: SPEED_PLAYER_MASTER,
     },
+    projectile: {
+        size: (valuePU: number) => {
+            return valuePU > 0 ?
+                PROJECTILE_SIZE + (Math.round((PROJECTILE_SIZE * 3) / LENGTH_UPGRADES_PU) * valuePU)
+                : PROJECTILE_SIZE
+        },
+        speed: (valuePU: number) => {
+            return valuePU > 0 ?
+                PROJECTILE_SPEED + (Math.round((PROJECTILE_SPEED * 2) / LENGTH_UPGRADES_PU) * valuePU)
+                : PROJECTILE_SPEED
+        }
+    },
     ranking: {
         intervalUpdateListRanking: ONE_SECOND * 1,
         listLength: 25
@@ -121,8 +137,8 @@ export const RULES_GAME = {
             hp: Math.round((100 * 2) / LENGTH_UPGRADES_PU),
             size: 3,
             speed: Math.floor((SPEED_PLAYER_MASTER * 2) / LENGTH_UPGRADES_PU),
-            projectileSpeed: 1,
-            projectileSize: 1,
+            projectileSpeed: Math.round((PROJECTILE_SPEED * 2) / LENGTH_UPGRADES_PU),
+            projectileSize: Math.round((PROJECTILE_SIZE * 3) / LENGTH_UPGRADES_PU),
             projectileDamage: 5,
         }
     }

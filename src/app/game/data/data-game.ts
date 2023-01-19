@@ -2,6 +2,7 @@ import { IId } from "../../../database/index.js";
 import { IGame, IServer } from "../model/game.js";
 import { IPlayer } from "../model/player.js";
 import { IPotion } from "../model/potion.js";
+import { IProjectile } from "../model/projectile.js";
 import { IXp } from "../model/xp.js";
 
 function DataGame() {
@@ -165,6 +166,49 @@ function DataGame() {
         }
     }
 
+    // Projectile
+    const getProjectile = ({ _id, idServer }: { _id: String, idServer: IId }) => {
+        const response: { projectile: IProjectile | null, index: number } = (function () {
+            for (let i = 0; i < games.servers[indexes[`${idServer}`]].projectiles.length; i++) {
+                const projectile = games.servers[indexes[`${idServer}`]].projectiles[i];
+
+                if (projectile._id != _id) { continue }
+
+                return { projectile, index: i }
+            }
+
+            return { projectile: null, index: -1 }
+        }())
+
+        return response
+    }
+
+    const addProjectile = ({ projectile, idServer }: { projectile: IProjectile, idServer: IId }) => {
+        try {
+            games.servers[indexes[`${idServer}`]].projectiles.push(projectile)
+
+            return true
+        } catch (err) {
+            console.log(err);
+            return false
+        }
+    }
+
+    const removeProjectile = ({ _id, idServer }: { _id: String, idServer: IId }) => {
+        try {
+            const { index } = getProjectile({ idServer, _id })
+
+            if (index == -1) { return false }
+
+            games.servers[indexes[`${idServer}`]].projectiles.splice(index, 1)
+
+            return true
+        } catch (err) {
+            console.log(err);
+            return false
+        }
+    }
+
     return {
         getData,
         getDataByServer,
@@ -179,6 +223,9 @@ function DataGame() {
         getPotion,
         addPotion,
         removePotion,
+        getProjectile,
+        addProjectile,
+        removeProjectile,
     }
 }
 

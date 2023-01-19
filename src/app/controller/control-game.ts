@@ -7,18 +7,26 @@ import { IUser } from "../model/model-user.js"
 import { validToken } from "../util/token.service.js"
 import PlayerControl from "./control-player.js"
 import PotionControl from "./control-potion.js"
+import ProjectileControl from "./control-projectile.js"
 import XpControl from "./control-xp.js"
 
 export default function GameControl() {
     const playerControl = PlayerControl()
     const xpControl = XpControl()
     const potionControl = PotionControl()
+    const projectileControl = ProjectileControl()
 
     const verifyCollision = ({ position: { x: x1, y: y1 }, dimension: { width: w1, height: h1 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }, { position: { x: x2, y: y2 }, dimension: { width: w2, height: h2 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }) => {
         return ((x1 >= x2 && x1 <= x2 + w2 && y1 >= y2 && y1 <= y2 + h2) ||
             (x1 + w1 >= x2 && x1 + w1 <= x2 + w2 && y1 >= y2 && y1 <= y2 + h2) ||
             (x1 + w1 >= x2 && x1 + w1 <= x2 + w2 && y1 + h1 >= y2 && y1 + h1 <= y2 + h2) ||
             (x1 <= x2 + w2 && x1 >= x2 && y1 + h1 >= y2 && y1 + h1 <= y2 + h2))
+    }
+
+    const calculateAngle = ({ x: x1, y: y1 }: { x: number, y: number }, { x: x2, y: y2 }: { x: number, y: number }) => {
+        const angle = Math.atan2(y2 - y1, x2 - x1)
+
+        return { angle }
     }
 
     const calculateDistance = ({ position: { x: x1, y: y1 }, dimension: { width: w1, height: h1 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }, { position: { x: x2, y: y2 }, dimension: { width: w2, height: h2 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }) => {
@@ -92,7 +100,8 @@ export default function GameControl() {
 
     // Update
     const update = (idServer: IId) => {
-        movePlayers({ idServer })
+        setTimeout(() => movePlayers({ idServer }), 1)
+        setTimeout(() => updatePositionProjectiles({ idServer }), 1)
     }
 
     const verifyAll = (idServer: IId) => {
@@ -110,14 +119,24 @@ export default function GameControl() {
         }
     }
 
+    const updatePositionProjectiles = ({ idServer }: { idServer: IId }) => {
+        const { projectiles } = dataGame.getDataByServer({ _id: idServer })
+
+        for (let i = 0; i < projectiles.length; i++) {
+            const projectile = projectiles[i]
+
+            projectileControl.updatePosition({ projectile })
+        }
+    }
+
     const verifyCollisionPlayerXp = ({ idServer }: { idServer: IId }) => {
         const { players, xps } = dataGame.getDataByServer({ _id: idServer })
 
-        for (let i = 0; i < players.length; i++) {
-            const player = players[i]
+        for (let i = 0; i < xps.length; i++) {
+            const xp = xps[i]
 
-            for (let i = 0; i < xps.length; i++) {
-                const xp = xps[i]
+            for (let i = 0; i < players.length; i++) {
+                const player = players[i]
 
                 if (verifyCollision(xp, player)) {
                     playerControl.playerSetXp({ player, value: xp.value })
@@ -172,6 +191,16 @@ export default function GameControl() {
         playerControl.playerUpgradePu(data)
     }
 
+    const shootProjectile = ({ data, idServer, idSocket }: { idSocket: String, idServer: IId, data: { x: number, y: number } }) => {
+        const { player } = dataGame.getPlayer({ idSocket, idServer })
+
+        if (!player) { return }
+
+        const { angle } = calculateAngle(player.position, data)
+
+        createProjectile(player, angle)
+    }
+
     // Xp
     const createXpSerial = (idServer: IId) => {
         for (let i = 0; i < RULES_GAME.xps.lengthForRespawn && dataGame.getDataByServer({ _id: idServer }).xps.length < RULES_GAME.xps.maxLength; i++) {
@@ -194,6 +223,11 @@ export default function GameControl() {
         return potionControl.createPotion(idServer)
     }
 
+    // Projectile
+    const createProjectile = (player: IPlayer, angle: number) => {
+        return projectileControl.createProjectile(player, angle)
+    }
+
     return {
         getData,
         getRanking,
@@ -202,6 +236,7 @@ export default function GameControl() {
         UserStartGame,
         UserQuitGame,
         movePlayer,
+        shootProjectile,
         upgradePU,
         createXpSerial,
         verifyAll,

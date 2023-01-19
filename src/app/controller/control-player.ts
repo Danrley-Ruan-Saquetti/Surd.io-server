@@ -77,7 +77,7 @@ export default function PlayerControl() {
             contAlreadyUpdatePU: 0,
             xp: 0,
             xpUpLevel: RULES_GAME.player.xpUpLevel(1),
-            position: { x: Math.random() * (RULES_GAME.map.dimension.width - RULES_GAME.player.dimension.width - 1) + 1, y: Math.random() * (RULES_GAME.map.dimension.height - RULES_GAME.player.dimension.height) + 1 },
+            position: { x: 100, y: 100 },
             powerUps: {
                 damage: 0,
                 criticalDamage: 0,
@@ -310,10 +310,6 @@ export default function PlayerControl() {
             const move = () => {
                 player.keysMove.UP = true
                 player.lastKeyMove.vertical = "UP"
-
-                if (dataGame.updatePlayer({ player })) {
-                    ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
-                }
             }
 
             const stop = () => {
@@ -327,10 +323,6 @@ export default function PlayerControl() {
             const move = () => {
                 player.keysMove.DOWN = true
                 player.lastKeyMove.vertical = "DOWN"
-
-                if (dataGame.updatePlayer({ player })) {
-                    ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
-                }
             }
 
             const stop = () => {
@@ -344,10 +336,6 @@ export default function PlayerControl() {
             const move = () => {
                 player.keysMove.RIGHT = true
                 player.lastKeyMove.horizontal = "RIGHT"
-
-                if (dataGame.updatePlayer({ player })) {
-                    ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
-                }
             }
 
             const stop = () => {
@@ -361,10 +349,6 @@ export default function PlayerControl() {
             const move = () => {
                 player.keysMove.LEFT = true
                 player.lastKeyMove.horizontal = "LEFT"
-
-                if (dataGame.updatePlayer({ player })) {
-                    ioEmit({ ev: "$/games/players/move", data: { player }, room: player.idServer })
-                }
             }
 
             const stop = () => {
