@@ -4,8 +4,11 @@ import dataGame from "../game/data/data-game.js"
 import { IPlayer } from "../game/model/player"
 import { ioEmit, getSocket } from "../io/io.js"
 import { IUser } from "../model/model-user"
+import ProjectileControl from "./control-projectile.js"
+import UserControl from "./control-user.js"
 
 export default function PlayerControl() {
+    const projectileControl = ProjectileControl()
 
     const notifyCurrentPlayer = async (events: String[], idSocket: String, data: any) => {
         const response = await getSocket(idSocket)
@@ -47,6 +50,16 @@ export default function PlayerControl() {
 
         if (response) {
             ioEmit({ ev: "$/games/players/quit", data: { player: { idSocket } }, room: idServer })
+
+            setTimeout(() => {
+                const { projectiles } = dataGame.getProjectilesByPlayer({ idServer, idSocket })
+
+                for (let i = 0; i < projectiles.length; i++) {
+                    const projectile = projectiles[i]
+
+                    projectileControl.removeProjectile(projectile)
+                }
+            }, 1)
         }
 
         return response
@@ -137,6 +150,12 @@ export default function PlayerControl() {
     }
 
     // Update
+    const playerGameOver = ({ player }: { player: IPlayer }) => {
+        notifyCurrentPlayer(["$/games/players/current/game-over"], player.idSocket, { player })
+
+        return removePlayer(player)
+    }
+
     const updatePositionPlayer = ({ player }: { player: IPlayer }) => {
         if (!player.keysMove.DOWN && !player.keysMove.LEFT && !player.keysMove.RIGHT && !player.keysMove.UP) { return false }
 
@@ -230,6 +249,22 @@ export default function PlayerControl() {
         if (response.player) {
             notifyCurrentPlayer(["$/games/players/current/upgrade"], player.idSocket, { player: response.player })
         }
+
+        dataGame.updatePlayer({ player })
+    }
+
+    const playerSetDamage = ({ player, value, isCritical }: { player: IPlayer, value: number, isCritical: Boolean }) => {
+        player.hp -= value
+
+        if (player.hp <= 0) {
+            playerGameOver({ player })
+            return { isDead: true }
+        }
+        ioEmit({ ev: "$/games/players/update", data: { player }, room: player.idServer })
+        notifyCurrentPlayer(["$/games/players/current/upgrade", `$/games/players/current/${isCritical ? "critical-" : ""}hit`], player.idSocket, { player })
+
+        dataGame.updatePlayer({ player })
+        return { isDead: false }
     }
 
     // --Functions Map Keys
@@ -375,5 +410,6 @@ export default function PlayerControl() {
         movePlayer,
         playerSetXp,
         playerSetHp,
+        playerSetDamage,
     }
 }

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Título do Site</title>
+
+    <style>
+        canvas {
+            border: 1px solid red;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas" width="500" height="500"></canvas>
+
+    <script>
+        const canvas = document.getElementById("canvas")
+        const ctx = canvas.getContext("2d")
+
+        addEventListener("keydown", ({
+            key
+        }) => {
+            switch (key) {
+                case "w":
+                    circle.position.y -= 1
+                    break
+                case "a":
+                    circle.position.x -= 1
+                    break
+                case "s":
+                    circle.position.y += 1
+                    break
+                case "d":
+                    circle.position.x += 1
+                    break
+            }
+        })
+
+        const calculateDistanceBetweenCubicCircle = ({
+            position: {
+                x: x1,
+                y: y1
+            }
+        }, {
+            position: {
+                x: x2,
+                y: y2
+            }
+        }) => {
+            const distance = Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2))
+
+            return distance
+        }
+
+        const verifyCollisionCubic = ({
+            position: {
+                x: x1,
+                y: y1
+            },
+            dimension: {
+                width: w1,
+                height: h1
+            }
+        }, {
+            position: {
+                x: x2,
+                y: y2
+            },
+            dimension: {
+                width: w2,
+                height: h2
+            }
+        }) => {
+            return ((x1 >= x2 && x1 <= x2 + w2 && y1 >= y2 && y1 <= y2 + h2) ||
+                (x1 + w1 >= x2 && x1 + w1 <= x2 + w2 && y1 >= y2 && y1 <= y2 + h2) ||
+                (x1 + w1 >= x2 && x1 + w1 <= x2 + w2 && y1 + h1 >= y2 && y1 + h1 <= y2 + h2) ||
+                (x1 <= x2 + w2 && x1 >= x2 && y1 + h1 >= y2 && y1 + h1 <= y2 + h2))
+        }
+
+        const verifyCollisionCubicCircle = (circle, cubic) => {
+            const size = circle.size
+
+            if ((
+                    (circle.position.x < cubic.position.x && (circle.position.y < cubic.position.y || circle.position.y > cubic.position.y + cubic.dimension.height)) ||
+                    (circle.position.x > cubic.position.x + cubic.dimension.width && (circle.position.y < cubic.position.y || circle.position.y > cubic.position.y + cubic.dimension.height))
+                )) {
+                return (
+                    calculateDistanceBetweenCubicCircle(circle, cubic) <= size ||
+                    calculateDistanceBetweenCubicCircle(circle, {
+                        position: {
+                            x: cubic.position.x + cubic.dimension.width,
+                            y: cubic.position.y
+                        }
+                    }) <= size ||
+                    calculateDistanceBetweenCubicCircle(circle, {
+                        position: {
+                            x: cubic.position.x,
+                            y: cubic.position.y + cubic.dimension.height
+                        }
+                    }) <= size ||
+                    calculateDistanceBetweenCubicCircle(circle, {
+                        position: {
+                            x: cubic.position.x + cubic.dimension.width,
+                            y: cubic.position.y + cubic.dimension.height
+                        }
+                    }) <= size
+                )
+            }
+
+            return verifyCollisionCubic({
+                position: {
+                    x: circle.position.x - circle.size,
+                    y: circle.position.y - circle.size
+                },
+                dimension: {
+                    width: circle.size * 2,
+                    height: circle.size * 2
+                }
+            }, {
+                position: {
+                    x: cubic.position.x,
+                    y: cubic.position.y
+                },
+                dimension: {
+                    height: cubic.dimension.height,
+                    width: cubic.dimension.width
+                }
+            })
+        }
+
+        const cubic = {
+            position: {
+                x: (canvas.width - 50) / 2,
+                y: (canvas.height - 50) / 2
+            },
+            dimension: {
+                width: 50,
+                height: 50
+            },
+        }
+        const circle = {
+            position: {
+                x: cubic.position.x + cubic.dimension.width * 1.35,
+                y: cubic.position.y
+            },
+            size: 15
+        }
+
+        let a = 0
+        const animate = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+            ctx.fillStyle = "#000"
+            ctx.fillRect(cubic.position.x, cubic.position.y, cubic.dimension.width, cubic.dimension.height)
+
+            ctx.beginPath()
+            ctx.arc(circle.position.x, circle.position.y, circle.size, 0, Math.PI * 2, false)
+            ctx.fillStyle = "#ff0000"
+            ctx.fill()
+
+            if (verifyCollisionCubicCircle(circle, cubic)) {
+                console.log("!");
+            }
+
+            requestAnimationFrame(animate)
+        }
+
+        animate()
+    </script>
+</body>
+
+</html>

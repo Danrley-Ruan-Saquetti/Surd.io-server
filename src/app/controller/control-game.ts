@@ -2,6 +2,7 @@ import { IId } from "../../database/index.js"
 import { RULES_GAME } from "../business-rule/rules.js"
 import dataGame from "../game/data/data-game.js"
 import { IPlayer } from "../game/model/player.js"
+import { IProjectile } from "../game/model/projectile.js"
 import { ioEmit } from "../io/io.js"
 import { IUser } from "../model/model-user.js"
 import { validToken } from "../util/token.service.js"
@@ -16,17 +17,51 @@ export default function GameControl() {
     const potionControl = PotionControl()
     const projectileControl = ProjectileControl()
 
-    const verifyCollision = ({ position: { x: x1, y: y1 }, dimension: { width: w1, height: h1 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }, { position: { x: x2, y: y2 }, dimension: { width: w2, height: h2 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }) => {
+    const observerUserGameOver: Function[] = []
+
+    const subscribeUserGameOver = (observerFunction: Function) => {
+        observerUserGameOver.push(observerFunction)
+    }
+
+    const notifyUserGameOver = (data: any) => {
+        observerUserGameOver.forEach(async (observerFunction) => {
+            await observerFunction(data)
+        })
+    }
+
+    const verifyCollisionRectangle = ({ position: { x: x1, y: y1 }, dimension: { width: w1, height: h1 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }, { position: { x: x2, y: y2 }, dimension: { width: w2, height: h2 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }) => {
         return ((x1 >= x2 && x1 <= x2 + w2 && y1 >= y2 && y1 <= y2 + h2) ||
             (x1 + w1 >= x2 && x1 + w1 <= x2 + w2 && y1 >= y2 && y1 <= y2 + h2) ||
             (x1 + w1 >= x2 && x1 + w1 <= x2 + w2 && y1 + h1 >= y2 && y1 + h1 <= y2 + h2) ||
             (x1 <= x2 + w2 && x1 >= x2 && y1 + h1 >= y2 && y1 + h1 <= y2 + h2))
     }
 
+    const verifyCollisionRectangleCircle = (circle: { position: { x: number, y: number }, size: number }, rectangle: { position: { x: number, y: number }, dimension: { width: number, height: number } }) => {
+        const size = circle.size
+
+        if ((circle.position.x < rectangle.position.x && (circle.position.y < rectangle.position.y || circle.position.y > rectangle.position.y + rectangle.dimension.height))
+            || (circle.position.x > rectangle.position.x + rectangle.dimension.width && (circle.position.y < rectangle.position.y || circle.position.y > rectangle.position.y + rectangle.dimension.height))) {
+            return (
+                calculateDistanceBetweenRectangleCircle(circle, rectangle) <= size ||
+                calculateDistanceBetweenRectangleCircle(circle, { position: { x: rectangle.position.x + rectangle.dimension.width, y: rectangle.position.y } }) <= size ||
+                calculateDistanceBetweenRectangleCircle(circle, { position: { x: rectangle.position.x, y: rectangle.position.y + rectangle.dimension.height } }) <= size ||
+                calculateDistanceBetweenRectangleCircle(circle, { position: { x: rectangle.position.x + rectangle.dimension.width, y: rectangle.position.y + rectangle.dimension.height } }) <= size
+            )
+        }
+
+        return verifyCollisionRectangle({ position: { x: circle.position.x - circle.size, y: circle.position.y - circle.size }, dimension: { width: circle.size * 2, height: circle.size * 2 } }, { position: { x: rectangle.position.x, y: rectangle.position.y }, dimension: { height: rectangle.dimension.height, width: rectangle.dimension.width } })
+    }
+
     const calculateAngle = ({ x: x1, y: y1 }: { x: number, y: number }, { x: x2, y: y2 }: { x: number, y: number }) => {
         const angle = Math.atan2(y2 - y1, x2 - x1)
 
         return { angle }
+    }
+
+    const calculateDistanceBetweenRectangleCircle = ({ position: { x: x1, y: y1 } }: { position: { x: number, y: number } }, { position: { x: x2, y: y2 } }: { position: { x: number, y: number } }) => {
+        const distance = Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2))
+
+        return distance
     }
 
     const calculateDistance = ({ position: { x: x1, y: y1 }, dimension: { width: w1, height: h1 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }, { position: { x: x2, y: y2 }, dimension: { width: w2, height: h2 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }) => {
@@ -107,6 +142,7 @@ export default function GameControl() {
     const verifyAll = (idServer: IId) => {
         setTimeout(() => verifyCollisionPlayerXp({ idServer }), 1)
         setTimeout(() => verifyCollisionPlayerPotion({ idServer }), 1)
+        setTimeout(() => verifyCollisionPlayerProjectile({ idServer }), 1)
     }
 
     const movePlayers = ({ idServer }: { idServer: IId }) => {
@@ -135,10 +171,10 @@ export default function GameControl() {
         for (let i = 0; i < xps.length; i++) {
             const xp = xps[i]
 
-            for (let i = 0; i < players.length; i++) {
-                const player = players[i]
+            for (let j = 0; j < players.length; j++) {
+                const player = players[j]
 
-                if (verifyCollision(xp, player)) {
+                if (verifyCollisionRectangle(xp, player)) {
                     playerControl.playerSetXp({ player, value: xp.value })
                     xpControl.removeXp({ _id: xp._id, idServer })
                 }
@@ -149,15 +185,33 @@ export default function GameControl() {
     const verifyCollisionPlayerPotion = ({ idServer }: { idServer: IId }) => {
         const { players, potions } = dataGame.getDataByServer({ _id: idServer })
 
-        for (let i = 0; i < players.length; i++) {
-            const player = players[i]
+        for (let i = 0; i < potions.length; i++) {
+            const potion = potions[i]
 
-            for (let i = 0; i < potions.length; i++) {
-                const potion = potions[i]
+            for (let j = 0; j < players.length; j++) {
+                const player = players[j]
 
-                if (verifyCollision(potion, player)) {
+                if (verifyCollisionRectangle(potion, player)) {
                     playerControl.playerSetHp({ player, value: potion.value })
                     potionControl.removePotion({ _id: potion._id, idServer })
+                }
+            }
+        }
+    }
+
+    const verifyCollisionPlayerProjectile = ({ idServer }: { idServer: IId }) => {
+        const { players, projectiles } = dataGame.getDataByServer({ _id: idServer })
+
+        for (let i = 0; i < projectiles.length; i++) {
+            const projectile = projectiles[i]
+
+            for (let j = 0; j < players.length; j++) {
+                const player = players[j]
+
+                if (projectile.idSocket == player.idSocket) { continue }
+
+                if (verifyCollisionRectangleCircle(projectile, player)) {
+                    projectileHitPlayer({ player, projectile })
                 }
             }
         }
@@ -201,6 +255,26 @@ export default function GameControl() {
         createProjectile(player, angle)
     }
 
+    const projectileHitPlayer = ({ player: playerHit, projectile }: { player: IPlayer, projectile: IProjectile }) => {
+        const { player: playerShoot } = dataGame.getPlayer({ idSocket: projectile.idSocket, idServer: projectile.idServer })
+
+        if (!playerShoot) { return }
+
+        const damage = (function () {
+            const isCritical = Math.random() * 100 > playerShoot.criticalDamage
+
+            if (isCritical) { return { value: playerShoot.damage * 3, isCritical } }
+
+            return { value: playerShoot.damage, isCritical }
+        }())
+
+        projectileControl.removeProjectile(projectile)
+
+        if (playerControl.playerSetDamage({ player: playerHit, ...damage }).isDead) {
+            notifyUserGameOver({ idSocket: playerHit.idSocket })
+        }
+    }
+
     // Xp
     const createXpSerial = (idServer: IId) => {
         for (let i = 0; i < RULES_GAME.xps.lengthForRespawn && dataGame.getDataByServer({ _id: idServer }).xps.length < RULES_GAME.xps.maxLength; i++) {
@@ -229,6 +303,7 @@ export default function GameControl() {
     }
 
     return {
+        subscribeUserGameOver,
         getData,
         getRanking,
         update,

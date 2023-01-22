@@ -1,11 +1,15 @@
 import { IId } from "../../database";
 import { RULES_GAME } from "../business-rule/rules.js";
 import GameControl from "../controller/control-game.js";
+import UserControl from "../controller/control-user.js";
 import ServerDao from "../model/dao-server.js";
 
 function RunningGame() {
     const gameControl = GameControl()
     const serverDao = ServerDao()
+    const userControl = UserControl()
+
+    gameControl.subscribeUserGameOver(userControl.EUserGameOver)
 
     const startGames = async () => {
         const responseServers = await serverDao.list()

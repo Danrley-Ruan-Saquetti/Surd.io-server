@@ -671,23 +671,10 @@ io.on("connection", async (socket) => {
         try {
             const { authToken } = req
 
-            const response = await userControl.EUserQuitGame({ idSocket, token: authToken })
-
-            const { status } = response
-
-            if (response.valueOf) {
-                //@ts-expect-error
-                response.valueOf = undefined
-            }
-            if (response.status) {
-                //@ts-expect-error
-                response.status = undefined
-            }
-
-            socketEmit({ ev: "games/quit/res", data: response })
+            socketEmit({ ev: "games/quit/res", data: { success: true } })
         } catch (err) {
             console.log(err);
-            socketEmit({ ev: "games/quit/res", data: { error: { msg: "Cannot get invites denied", system: true } } })
+            socketEmit({ ev: "games/quit/res", data: { error: { msg: "Cannot game leave", system: true } } })
         }
     })
 
@@ -719,7 +706,7 @@ io.on("connection", async (socket) => {
         try {
             const { data, idServer } = req
 
-            gameControl.shootProjectile({idSocket, idServer, data})
+            gameControl.shootProjectile({ idSocket, idServer, data })
         } catch (err) {
             console.log(err);
             socketEmit({ ev: "games/players/move/res", data: { error: { msg: "Cannot move player", system: true } } })

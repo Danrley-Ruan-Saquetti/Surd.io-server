@@ -183,6 +183,12 @@ function DataGame() {
         return response
     }
 
+    const getProjectilesByPlayer = ({ idSocket, idServer }: { idSocket: String, idServer: IId }) => {
+        const projectiles: IProjectile[] = dataGame.getDataByServer({ _id: idServer }).projectiles.filter(p => { return p.idSocket == idSocket })
+
+        return { projectiles }
+    }
+
     const addProjectile = ({ projectile, idServer }: { projectile: IProjectile, idServer: IId }) => {
         try {
             games.servers[indexes[`${idServer}`]].projectiles.push(projectile)
@@ -224,6 +230,7 @@ function DataGame() {
         addPotion,
         removePotion,
         getProjectile,
+        getProjectilesByPlayer,
         addProjectile,
         removeProjectile,
     }

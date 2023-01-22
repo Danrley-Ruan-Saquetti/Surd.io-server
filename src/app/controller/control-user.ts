@@ -151,7 +151,7 @@ export default function UserControl() {
 
         responseSocket.valueOf && responseSocket.socket.emit("$/users/current/update/serverConnected", { msg: "User enter server", user })
 
-        const responseNotify = await postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: server._id })
+        await postControl.systemSendPost({ body: `User ${user.username} connected`, idServer: server._id })
 
         ioEmit({ ev: `$/users/connected`, data: { msg: `User ${user.username} connected` }, room: `${server._id}` })
 
@@ -719,7 +719,7 @@ export default function UserControl() {
         return responseConnectServer
     }
 
-    const EUserQuitGame = async ({ idSocket, token }: { idSocket: String, token: String }) => {
+    const EUserGameOver = async ({ idSocket }: { idSocket: String }) => {
         const responseLobby = await serverControl.findLobby()
 
         if (!responseLobby.server) { return { error: { msg: "Lobby not found", system: true }, status: 404 } }
@@ -730,15 +730,9 @@ export default function UserControl() {
 
         const { serverConnected } = responseUser.user
 
-        const responseConnectServer = await userConnectServer({ _id: responseLobby.server._id, idSocket, token })
+        const responseConnectServer = await userConnectServer({ _id: responseLobby.server._id, idSocket, token: `Bearer ${responseUser.user.authToken}` || "" })
 
         if (!responseConnectServer.valueOf || !responseConnectServer.user) { return responseConnectServer }
-
-        const { user } = responseConnectServer
-
-        const responseGame = gameControl.UserQuitGame({ idSocket, idServer: serverConnected || null })
-
-        if (!responseGame.valueOf) { return { error: { msg: "Cannot disconnect server", system: true }, valueOf: false, status: 401 } }
 
         return responseConnectServer
     }
@@ -795,6 +789,6 @@ export default function UserControl() {
         EUserDisconnect,
         EUserConnect,
         EUserStartGame,
-        EUserQuitGame,
+        EUserGameOver,
     }
 }
