@@ -83,6 +83,7 @@ export default function PlayerControl() {
             lastKeyMove: { horizontal: "", vertical: "" },
             level: 1,
             points: 0,
+            contKills: 0,
             speed: { x: 0, y: 0 },
             fov: RULES_GAME.player.fov(RULES_GAME.player.dimension),
             speedMaster: RULES_GAME.player.speedMaster,
@@ -197,8 +198,8 @@ export default function PlayerControl() {
     }
 
     const playerSetXp = ({ player, value }: { player: IPlayer, value: number }) => {
-        player.xp += value
-        player.points += value
+        player.xp += Math.round(value)
+        player.points += Math.round(value)
 
         notifyCurrentPlayer(["$/games/players/current/earn-xp"], player.idSocket, { player })
 
@@ -265,6 +266,24 @@ export default function PlayerControl() {
 
         dataGame.updatePlayer({ player })
         return { isDead: false }
+    }
+
+    const playerSetKill = ({ player, playerDead }: { player: IPlayer, playerDead: IPlayer }) => {
+        player.contKills++
+
+        const value = (function () {
+            let value = RULES_GAME.player.xpForKill
+
+            value += playerDead.level * RULES_GAME.player.xpForKillMultiplier
+
+            return value
+        }())
+
+        playerSetXp({ player, value })
+
+        notifyCurrentPlayer(["$/games/players/current/upgrade", "$/games/players/current/kill"], player.idSocket, { player })
+
+        dataGame.updatePlayer({ player })
     }
 
     // --Functions Map Keys
@@ -410,6 +429,7 @@ export default function PlayerControl() {
         movePlayer,
         playerSetXp,
         playerSetHp,
+        playerSetKill,
         playerSetDamage,
     }
 }

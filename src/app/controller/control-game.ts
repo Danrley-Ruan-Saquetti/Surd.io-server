@@ -272,6 +272,7 @@ export default function GameControl() {
 
         if (playerControl.playerSetDamage({ player: playerHit, ...damage }).isDead) {
             notifyUserGameOver({ idSocket: playerHit.idSocket })
+            playerControl.playerSetKill({ player: playerShoot, playerDead: playerHit })
         }
     }
 

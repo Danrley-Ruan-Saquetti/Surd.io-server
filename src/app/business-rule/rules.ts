@@ -76,6 +76,8 @@ export const RULES_GAME = {
         xpUpLevel: (level: number) => {
             return Math.ceil(((level * 1.5) * 15 ^ 1.5) / 10) * 10
         },
+        xpForKillMultiplier: 1.5,
+        xpForKill: 20,
         projectile: {
             range: 100,
             reload: ONE_SECOND * 5, // 5 seconds

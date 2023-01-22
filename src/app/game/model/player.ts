@@ -16,6 +16,7 @@ export interface IPlayer {
     defense: number
     coins: number
     points: number
+    contKills: number
     position: { x: number, y: number }
     speed: { x: number, y: number }
     speedMaster: number
