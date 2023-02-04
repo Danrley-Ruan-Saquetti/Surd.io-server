@@ -26,6 +26,7 @@ function RunningGame() {
         let intervalFast: NodeJS.Timer
         let intervalXp: NodeJS.Timer
         let intervalPotion: NodeJS.Timer
+        let intervalEnemy: NodeJS.Timer
         let intervalListRanking: NodeJS.Timer
 
         const initComponents = () => {
@@ -34,6 +35,7 @@ function RunningGame() {
                 intervalFast = setInterval(verifyAll, RULES_GAME.game.intervalFast)
                 intervalXp = setInterval(createXpSerial, RULES_GAME.xps.intervalNew)
                 intervalPotion = setInterval(createPotionSerial, RULES_GAME.potions.intervalNew)
+                // intervalEnemy = setInterval(createEnemySerial, RULES_GAME.enemies.intervalNew)
                 intervalListRanking = setInterval(updateRanking, RULES_GAME.ranking.intervalUpdateListRanking)
             } catch (err) {
                 console.log(err);
@@ -41,6 +43,7 @@ function RunningGame() {
                 clearInterval(intervalFast)
                 clearInterval(intervalXp)
                 clearInterval(intervalPotion)
+                // clearInterval(intervalEnemy)
                 clearInterval(intervalListRanking)
             }
         }
@@ -59,6 +62,10 @@ function RunningGame() {
 
         const createPotionSerial = () => {
             gameControl.createPotionSerial(idServer)
+        }
+
+        const createEnemySerial = () => {
+            gameControl.createEnemySerial(idServer)
         }
 
         const updateRanking = () => {

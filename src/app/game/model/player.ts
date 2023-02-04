@@ -10,6 +10,7 @@ export interface IPlayer {
     criticalDamage: number
     hp: number
     hpMax: number
+    healingCure: number
     xp: number
     fov: number
     xpUpLevel: number
@@ -17,6 +18,12 @@ export interface IPlayer {
     coins: number
     points: number
     contKills: number
+    isPossibleShoot: Boolean
+    isPossibleHealing: Boolean
+    timeCooldownShoot: number
+    timeCooldownHealing: number
+    intervalHealingBetween?: NodeJS.Timeout
+    intervalHealing?: NodeJS.Timeout
     position: { x: number, y: number }
     speed: { x: number, y: number }
     speedMaster: number

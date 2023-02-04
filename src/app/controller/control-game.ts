@@ -1,11 +1,16 @@
 import { IId } from "../../database/index.js"
 import { RULES_GAME } from "../business-rule/rules.js"
 import dataGame from "../game/data/data-game.js"
+import { IEnemy } from "../game/model/enemy.js"
 import { IPlayer } from "../game/model/player.js"
+import { IPotion } from "../game/model/potion.js"
 import { IProjectile } from "../game/model/projectile.js"
+import { IXp } from "../game/model/xp.js"
 import { ioEmit } from "../io/io.js"
 import { IUser } from "../model/model-user.js"
+import { calculateAngle, calculateDistanceBetweenRectangleCircle } from "../util/calculations.js"
 import { validToken } from "../util/token.service.js"
+import EnemyControl from "./control-enemy.js"
 import PlayerControl from "./control-player.js"
 import PotionControl from "./control-potion.js"
 import ProjectileControl from "./control-projectile.js"
@@ -16,6 +21,7 @@ export default function GameControl() {
     const xpControl = XpControl()
     const potionControl = PotionControl()
     const projectileControl = ProjectileControl()
+    const enemyControl = EnemyControl()
 
     const observerUserGameOver: Function[] = []
 
@@ -50,29 +56,6 @@ export default function GameControl() {
         }
 
         return verifyCollisionRectangle({ position: { x: circle.position.x - circle.size, y: circle.position.y - circle.size }, dimension: { width: circle.size * 2, height: circle.size * 2 } }, { position: { x: rectangle.position.x, y: rectangle.position.y }, dimension: { height: rectangle.dimension.height, width: rectangle.dimension.width } })
-    }
-
-    const calculateAngle = ({ x: x1, y: y1 }: { x: number, y: number }, { x: x2, y: y2 }: { x: number, y: number }) => {
-        const angle = Math.atan2(y2 - y1, x2 - x1)
-
-        return { angle }
-    }
-
-    const calculateDistanceBetweenRectangleCircle = ({ position: { x: x1, y: y1 } }: { position: { x: number, y: number } }, { position: { x: x2, y: y2 } }: { position: { x: number, y: number } }) => {
-        const distance = Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2))
-
-        return distance
-    }
-
-    const calculateDistance = ({ position: { x: x1, y: y1 }, dimension: { width: w1, height: h1 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }, { position: { x: x2, y: y2 }, dimension: { width: w2, height: h2 } }: { position: { x: number, y: number }, dimension: { width: number, height: number } }) => {
-        const point1 = { x: x1 + (w1 / 2), y: y1 + (h1 / 2) }
-        const point2 = { x: x2 + (w2 / 2), y: y2 + (h2 / 2) }
-
-        const bounds = { width: point1.x - point2.x, height: point1.y - point2.y }
-
-        const distance = Math.sqrt((bounds.width) ^ 2 + (bounds.height) ^ 2)
-
-        return distance
     }
 
     // Data
@@ -136,6 +119,7 @@ export default function GameControl() {
     // Update
     const update = (idServer: IId) => {
         setTimeout(() => movePlayers({ idServer }), 1)
+        setTimeout(() => moveEnemies({ idServer }), 1)
         setTimeout(() => updatePositionProjectiles({ idServer }), 1)
     }
 
@@ -143,6 +127,8 @@ export default function GameControl() {
         setTimeout(() => verifyCollisionPlayerXp({ idServer }), 1)
         setTimeout(() => verifyCollisionPlayerPotion({ idServer }), 1)
         setTimeout(() => verifyCollisionPlayerProjectile({ idServer }), 1)
+        setTimeout(() => verifyCollisionEnemyPlayer({ idServer }), 1)
+        setTimeout(() => verifyCollisionEnemyProjectile({ idServer }), 1)
     }
 
     const movePlayers = ({ idServer }: { idServer: IId }) => {
@@ -152,6 +138,16 @@ export default function GameControl() {
             const player = players[i]
 
             playerControl.updatePositionPlayer({ player })
+        }
+    }
+
+    const moveEnemies = ({ idServer }: { idServer: IId }) => {
+        const { enemies } = dataGame.getDataByServer({ _id: idServer })
+
+        for (let i = 0; i < enemies.length; i++) {
+            const enemy = enemies[i]
+
+            enemyControl.moveEnemy({ enemy })
         }
     }
 
@@ -175,8 +171,7 @@ export default function GameControl() {
                 const player = players[j]
 
                 if (verifyCollisionRectangle(xp, player)) {
-                    playerControl.playerSetXp({ player, value: xp.value })
-                    xpControl.removeXp({ _id: xp._id, idServer })
+                    playerConsumeXp({ player, xp })
                 }
             }
         }
@@ -192,8 +187,7 @@ export default function GameControl() {
                 const player = players[j]
 
                 if (verifyCollisionRectangle(potion, player)) {
-                    playerControl.playerSetHp({ player, value: potion.value })
-                    potionControl.removePotion({ _id: potion._id, idServer })
+                    playerConsumePotion({ player, potion })
                 }
             }
         }
@@ -212,6 +206,40 @@ export default function GameControl() {
 
                 if (verifyCollisionRectangleCircle(projectile, player)) {
                     projectileHitPlayer({ player, projectile })
+                }
+            }
+        }
+    }
+
+    const verifyCollisionEnemyPlayer = ({ idServer }: { idServer: IId }) => {
+        const { enemies, players } = dataGame.getDataByServer({ _id: idServer })
+
+        for (let i = 0; i < enemies.length; i++) {
+            const enemy = enemies[i]
+
+            if (!enemy.isAvailableFollow) { continue }
+
+            for (let j = 0; j < players.length; j++) {
+                const player = players[j]
+
+                if (verifyCollisionRectangle(player, enemy)) {
+                    enemyHitPlayer({ enemy, player })
+                }
+            }
+        }
+    }
+
+    const verifyCollisionEnemyProjectile = ({ idServer }: { idServer: IId }) => {
+        const { enemies, projectiles } = dataGame.getDataByServer({ _id: idServer })
+
+        for (let i = 0; i < projectiles.length; i++) {
+            const projectile = projectiles[i]
+
+            for (let j = 0; j < enemies.length; j++) {
+                const enemy = enemies[j]
+
+                if (verifyCollisionRectangleCircle(projectile, enemy)) {
+                    projectileHitEnemy({ enemy, projectile })
                 }
             }
         }
@@ -250,30 +278,42 @@ export default function GameControl() {
 
         if (!player) { return }
 
+        if (!player.isPossibleShoot) { return }
+
+        player.isPossibleShoot = false
+
+        setTimeout(() => {
+            player.isPossibleShoot = true
+        }, player.timeCooldownShoot)
+
         const { angle } = calculateAngle(player.position, data)
 
         createProjectile(player, angle)
     }
 
-    const projectileHitPlayer = ({ player: playerHit, projectile }: { player: IPlayer, projectile: IProjectile }) => {
-        const { player: playerShoot } = dataGame.getPlayer({ idSocket: projectile.idSocket, idServer: projectile.idServer })
-
-        if (!playerShoot) { return }
-
-        const damage = (function () {
-            const isCritical = Math.random() * 100 > playerShoot.criticalDamage
-
-            if (isCritical) { return { value: playerShoot.damage * 3, isCritical } }
-
-            return { value: playerShoot.damage, isCritical }
-        }())
-
+    const projectileHitPlayer = ({ player, projectile }: { player: IPlayer, projectile: IProjectile }) => {
+        playerControl.projectileHitPlayer({ player, projectile }).isDead && notifyUserGameOver({ idSocket: player.idSocket })
         projectileControl.removeProjectile(projectile)
+    }
 
-        if (playerControl.playerSetDamage({ player: playerHit, ...damage }).isDead) {
-            notifyUserGameOver({ idSocket: playerHit.idSocket })
-            playerControl.playerSetKill({ player: playerShoot, playerDead: playerHit })
-        }
+    const projectileHitEnemy = ({ enemy, projectile }: { enemy: IEnemy, projectile: IProjectile }) => {
+        enemyControl.projectileHitEnemy({ enemy, projectile })
+        projectileControl.removeProjectile(projectile)
+    }
+
+    const enemyHitPlayer = ({ enemy, player }: { enemy: IEnemy, player: IPlayer }) => {
+        playerControl.enemyHitPlayer({ enemy, player }).isDead && notifyUserGameOver({ idSocket: player.idSocket })
+        enemyControl.enemyHitPlayer({ enemy })
+    }
+
+    const playerConsumeXp = ({ player, xp }: { player: IPlayer, xp: IXp }) => {
+        playerControl.playerSetXp({ player, value: xp.value })
+        xpControl.removeXp({ _id: xp._id, idServer: player.idServer })
+    }
+
+    const playerConsumePotion = ({ player, potion }: { player: IPlayer, potion: IPotion }) => {
+        playerControl.playerSetHp({ player, value: potion.value })
+        potionControl.removePotion({ _id: potion._id, idServer: player.idServer })
     }
 
     // Xp
@@ -303,6 +343,21 @@ export default function GameControl() {
         return projectileControl.createProjectile(player, angle)
     }
 
+    // Enemy
+    const createEnemySerial = (idServer: IId) => {
+        for (let i = 0; dataGame.getDataByServer({ _id: idServer }).enemies.length < RULES_GAME.enemies.lengthMax(dataGame.getDataByServer({ _id: idServer }).players.length) && i < dataGame.getDataByServer({ _id: idServer }).players.length; i++) {
+            const player = dataGame.getDataByServer({ _id: idServer }).players[i]
+
+            for (let j = 0; j < RULES_GAME.enemies.lengthForRespawn(dataGame.getDataByServer({ _id: idServer }).players.length); j++) {
+                createEnemy(idServer)
+            }
+        }
+    }
+
+    const createEnemy = (idServer: IId) => {
+        return enemyControl.createEnemy(idServer)
+    }
+
     return {
         subscribeUserGameOver,
         getData,
@@ -317,5 +372,6 @@ export default function GameControl() {
         createXpSerial,
         verifyAll,
         createPotionSerial,
+        createEnemySerial,
     }
 }

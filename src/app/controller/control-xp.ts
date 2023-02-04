@@ -49,10 +49,10 @@ export default function XpControl() {
         const xp: IXp = {
             _id: generatedId(),
             idServer,
-            dimension: xpLevel.dimension,
+            dimension: { height: xpLevel.dimension.height, width: xpLevel.dimension.width },
             value: xpLevel.value,
             position: { x: Math.random() * (RULES_GAME.map.dimension.width - xpLevel.dimension.width) + 1, y: Math.random() * (RULES_GAME.map.dimension.height - xpLevel.dimension.height) + 1 },
-            level: indexValue.index,
+            level: indexValue.index + 1,
             color: xpLevel.color
         }
 

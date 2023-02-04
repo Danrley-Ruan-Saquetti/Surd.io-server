@@ -49,10 +49,10 @@ export default function PotionControl() {
         const potion: IPotion = {
             _id: generatedId(),
             idServer,
-            dimension: potionLevel.dimension,
+            dimension: { height: potionLevel.dimension.height, width: potionLevel.dimension.width },
             value: potionLevel.value,
             position: { x: Math.random() * (RULES_GAME.map.dimension.width - potionLevel.dimension.width) + 1, y: Math.random() * (RULES_GAME.map.dimension.height - potionLevel.dimension.height) + 1 },
-            level: indexValue.index,
+            level: indexValue.index + 1,
             color: potionLevel.color
         }
 

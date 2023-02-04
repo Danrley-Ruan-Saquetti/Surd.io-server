@@ -63,7 +63,16 @@ export default async function DataStart() {
 
         responseServers.servers && (function () {
             responseServers.servers.forEach(server => {
-                dataGame.addGame({ _id: server._id, players: [], xps: [], map: { dimension: RULES_GAME.map.dimension }, potions: [], projectiles: [] })
+                const game = {
+                    _id: server._id,
+                    players: [],
+                    xps: [],
+                    map: { dimension: RULES_GAME.map.dimension },
+                    potions: [],
+                    projectiles: [],
+                    enemies: []
+                }
+                dataGame.addGame(game)
             })
         }())
     }

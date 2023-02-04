@@ -1,4 +1,5 @@
 import { IId } from "../../../database/index.js";
+import { IEnemy } from "../model/enemy.js";
 import { IGame, IServer } from "../model/game.js";
 import { IPlayer } from "../model/player.js";
 import { IPotion } from "../model/potion.js";
@@ -215,6 +216,66 @@ function DataGame() {
         }
     }
 
+    // Enemy
+    const getEnemy = ({ _id, idServer }: { _id: String, idServer: IId }) => {
+        const response: { enemy: IEnemy | null, index: number } = (function () {
+            for (let i = 0; i < games.servers[indexes[`${idServer}`]].enemies.length; i++) {
+                const enemy = games.servers[indexes[`${idServer}`]].enemies[i];
+
+                if (enemy._id != _id) { continue }
+
+                return { enemy, index: i }
+            }
+
+            return { enemy: null, index: -1 }
+        }())
+
+        return response
+    }
+
+    const getEnemiesByPlayer = ({ idSocket, idServer }: { idSocket: String, idServer: IId }) => {
+        const enemies: IEnemy[] = dataGame.getDataByServer({ _id: idServer }).enemies.filter(e => { return e.target == idSocket })
+
+        return { enemies }
+    }
+
+    const addEnemy = ({ enemy, idServer }: { enemy: IEnemy, idServer: IId }) => {
+        try {
+            games.servers[indexes[`${idServer}`]].enemies.push(enemy)
+
+            return true
+        } catch (err) {
+            console.log(err);
+            return false
+        }
+    }
+
+    const updateEnemy = ({ enemy }: { enemy: IEnemy }) => {
+        try {
+            games.servers[indexes[`${enemy.idServer}`]].enemies[getEnemy(enemy).index] = enemy
+
+            return true
+        } catch (err) {
+            console.log(err);
+            return false
+        }
+    }
+
+    const removeEnemy = ({ _id, idServer }: { _id: String, idServer: IId }) => {
+        try {
+            const { index } = getEnemy({ idServer, _id })
+
+            if (index == -1) { return false }
+
+            games.servers[indexes[`${idServer}`]].potions.splice(index, 1)
+
+            return true
+        } catch (err) {
+            console.log(err);
+            return false
+        }
+    }
+
     return {
         getData,
         getDataByServer,
@@ -233,6 +294,11 @@ function DataGame() {
         getProjectilesByPlayer,
         addProjectile,
         removeProjectile,
+        getEnemy,
+        getEnemiesByPlayer,
+        removeEnemy,
+        updateEnemy,
+        addEnemy,
     }
 }
 

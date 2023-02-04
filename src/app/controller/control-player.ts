@@ -1,11 +1,12 @@
 import { IId } from "../../database/index.js"
 import { RULES_GAME } from "../business-rule/rules.js"
 import dataGame from "../game/data/data-game.js"
+import { IEnemy } from "../game/model/enemy.js"
 import { IPlayer } from "../game/model/player"
+import { IProjectile } from "../game/model/projectile.js"
 import { ioEmit, getSocket } from "../io/io.js"
 import { IUser } from "../model/model-user"
 import ProjectileControl from "./control-projectile.js"
-import UserControl from "./control-user.js"
 
 export default function PlayerControl() {
     const projectileControl = ProjectileControl()
@@ -24,7 +25,7 @@ export default function PlayerControl() {
         }
     }
 
-    const validUpgrade = ({ player, powerUp }: { player: IPlayer, powerUp: "damage" | "hp" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" }) => {
+    const validUpgrade = ({ player, powerUp }: { player: IPlayer, powerUp: "damage" | "hp" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" | "projectileRange" | "projectileReload" }) => {
         if (player.upgradesPU <= 0) { return false }
 
         if (player.contAlreadyUpdatePU >= RULES_GAME.powerUp.maxUpgrades) { return false }
@@ -79,11 +80,16 @@ export default function PlayerControl() {
             criticalDamage: RULES_GAME.player.criticalDamage,
             hp: RULES_GAME.player.hp,
             hpMax: RULES_GAME.player.hp,
+            healingCure: RULES_GAME.player.healingCure,
             keysMove: { DOWN: false, LEFT: false, RIGHT: false, UP: false },
             lastKeyMove: { horizontal: "", vertical: "" },
             level: 1,
             points: 0,
             contKills: 0,
+            isPossibleShoot: true,
+            timeCooldownShoot: RULES_GAME.player.timeCooldownShoot,
+            isPossibleHealing: false,
+            timeCooldownHealing: RULES_GAME.player.timeCooldownHealing,
             speed: { x: 0, y: 0 },
             fov: RULES_GAME.player.fov(RULES_GAME.player.dimension),
             speedMaster: RULES_GAME.player.speedMaster,
@@ -201,13 +207,13 @@ export default function PlayerControl() {
         player.xp += Math.round(value)
         player.points += Math.round(value)
 
-        notifyCurrentPlayer(["$/games/players/current/earn-xp"], player.idSocket, { player })
+        notifyCurrentPlayer(["$/games/players/current/earn-xp"], player.idSocket, { player, xp: { value } })
 
         while (player.xp >= player.xpUpLevel) {
             player.xp -= player.xpUpLevel
             player.level++
-            player.upgradesPU++
             player.xpUpLevel = RULES_GAME.player.xpUpLevel(player.level)
+            if (player.contAlreadyUpdatePU < RULES_GAME.powerUp.maxUpgrades && player.upgradesPU < RULES_GAME.powerUp.maxUpgrades) player.upgradesPU++
 
             notifyCurrentPlayer(["$/games/players/current/level-up"], player.idSocket, { player })
         }
@@ -230,9 +236,11 @@ export default function PlayerControl() {
         ioEmit({ ev: "$/games/players/update", data: { player }, room: player.idServer })
 
         dataGame.updatePlayer({ player })
+
+        return { isFull: player.hp == player.hpMax }
     }
 
-    const playerUpgradePu = ({ idSocket, idServer, powerUp }: { idSocket: String, idServer: IId, powerUp: "damage" | "hp" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" }) => {
+    const playerUpgradePu = ({ idSocket, idServer, powerUp }: { idSocket: String, idServer: IId, powerUp: "damage" | "hp" | "defense" | "size" | "speed" | "projectileSpeed" | "projectileSize" | "criticalDamage" | "projectileRange" | "projectileReload" }) => {
         const { player } = dataGame.getPlayer({ idSocket, idServer })
 
         if (!player) { return }
@@ -245,13 +253,11 @@ export default function PlayerControl() {
         player.contAlreadyUpdatePU++
         player.upgradesPU--
 
-        const response = upgradesFunctions[powerUp]({ player })
+        const { player: p } = upgradesFunctions[powerUp]({ player })
 
-        if (response.player) {
-            notifyCurrentPlayer(["$/games/players/current/upgrade"], player.idSocket, { player: response.player })
-        }
+        notifyCurrentPlayer(["$/games/players/current/upgrade"], p.idSocket, { player: p })
 
-        dataGame.updatePlayer({ player })
+        dataGame.updatePlayer({ player: p })
     }
 
     const playerSetDamage = ({ player, value, isCritical }: { player: IPlayer, value: number, isCritical: Boolean }) => {
@@ -261,11 +267,32 @@ export default function PlayerControl() {
             playerGameOver({ player })
             return { isDead: true }
         }
+
+        // playerHealing({ player })
+
         ioEmit({ ev: "$/games/players/update", data: { player }, room: player.idServer })
         notifyCurrentPlayer(["$/games/players/current/upgrade", `$/games/players/current/${isCritical ? "critical-" : ""}hit`], player.idSocket, { player })
 
         dataGame.updatePlayer({ player })
         return { isDead: false }
+    }
+
+    const playerHealing = ({ player }: { player: IPlayer }) => {
+        clearInterval(player.intervalHealing)
+        clearInterval(player.intervalHealingBetween)
+
+        player.intervalHealing = setTimeout(() => {
+            player.isPossibleHealing = true
+        }, player.timeCooldownHealing)
+
+        player.intervalHealingBetween = setInterval(() => {
+            if (!player.isPossibleHealing || playerSetHp({ player, value: RULES_GAME.player.healingCure }).isFull) {
+                clearInterval(player.intervalHealing)
+                clearInterval(player.intervalHealingBetween)
+            }
+        }, RULES_GAME.player.timeCooldownHealing)
+
+        dataGame.updatePlayer({ player })
     }
 
     const playerSetKill = ({ player, playerDead }: { player: IPlayer, playerDead: IPlayer }) => {
@@ -286,75 +313,90 @@ export default function PlayerControl() {
         dataGame.updatePlayer({ player })
     }
 
+    const projectileHitPlayer = ({ player: playerHit, projectile }: { player: IPlayer, projectile: IProjectile }) => {
+        const { player: playerShoot } = dataGame.getPlayer({ idSocket: projectile.idSocket, idServer: projectile.idServer })
+
+        if (!playerShoot) { return { isDead: false } }
+
+        const damage = (function () {
+            const isCritical = Math.random() * 100 > playerShoot.criticalDamage
+
+            return { value: isCritical ? playerShoot.damage * 3 : playerShoot.damage, isCritical }
+        }())
+
+        const { isDead } = playerSetDamage({ player: playerHit, ...damage })
+
+        isDead && playerSetKill({ player: playerShoot, playerDead: playerHit })
+
+        return { isDead }
+    }
+
+    const enemyHitPlayer = ({ enemy, player }: { enemy: IEnemy, player: IPlayer }) => {
+        const damage = (function () {
+            const isCritical = Math.random() * 100 > enemy.criticalDamage
+
+            return { value: isCritical ? enemy.damage * 3 : enemy.damage, isCritical }
+        }())
+
+        const { isDead } = playerSetDamage({ player, ...damage })
+
+        return { isDead }
+    }
+
     // --Functions Map Keys
 
     // Upgrade PU
     const upgradesFunctions = {
         damage: ({ player }: { player: IPlayer }) => {
-            player.contAlreadyUpdatePU++
             player.damage += RULES_GAME.powerUp.values["damage"]
 
-            const response = dataGame.updatePlayer({ player })
-
-            return { valueOf: response, player }
+            return { player }
         },
         criticalDamage: ({ player }: { player: IPlayer }) => {
-            player.contAlreadyUpdatePU++
             player.criticalDamage += RULES_GAME.powerUp.values["criticalDamage"]
 
-            const response = dataGame.updatePlayer({ player })
-
-            return { valueOf: response, player }
+            return { player }
         },
         hp: ({ player }: { player: IPlayer }) => {
-            player.contAlreadyUpdatePU++
             player.hpMax += RULES_GAME.powerUp.values["hp"]
 
-            const response = dataGame.updatePlayer({ player })
-
-            return { valueOf: response, player }
+            return { player }
         },
         defense: ({ player }: { player: IPlayer }) => {
-            player.contAlreadyUpdatePU++
             player.defense += RULES_GAME.powerUp.values["defense"]
 
-            const response = dataGame.updatePlayer({ player })
-
-            return { valueOf: response, player }
+            return { player }
         },
         size: ({ player }: { player: IPlayer }) => {
-            player.contAlreadyUpdatePU++
             player.dimension.width += RULES_GAME.powerUp.values["size"]
             player.dimension.height += RULES_GAME.powerUp.values["size"]
             player.fov = RULES_GAME.player.fov(player.dimension)
             player.position.x -= (RULES_GAME.powerUp.values["size"] / 2)
             player.position.y -= (RULES_GAME.powerUp.values["size"] / 2)
 
-            const response = dataGame.updatePlayer({ player })
-
-            return { valueOf: response, player }
+            return { player }
         },
         speed: ({ player }: { player: IPlayer }) => {
-            player.contAlreadyUpdatePU++
             player.speedMaster += RULES_GAME.powerUp.values["speed"]
 
-            const response = dataGame.updatePlayer({ player })
-
-            return { valueOf: response, player }
+            return { player }
         },
         projectileSpeed: ({ player }: { player: IPlayer }) => {
-            player.contAlreadyUpdatePU++
 
-            const response = dataGame.updatePlayer({ player })
-
-            return { valueOf: response, player }
+            return { player }
         },
         projectileSize: ({ player }: { player: IPlayer }) => {
-            player.contAlreadyUpdatePU++
 
-            const response = dataGame.updatePlayer({ player })
+            return { player }
+        },
+        projectileRange: ({ player }: { player: IPlayer }) => {
 
-            return { valueOf: response, player }
+            return { player }
+        },
+        projectileReload: ({ player }: { player: IPlayer }) => {
+            player.timeCooldownShoot -= RULES_GAME.powerUp.values["projectileCooldown"]
+
+            return { player }
         }
     }
 
@@ -431,5 +473,7 @@ export default function PlayerControl() {
         playerSetHp,
         playerSetKill,
         playerSetDamage,
+        projectileHitPlayer,
+        enemyHitPlayer,
     }
 }
